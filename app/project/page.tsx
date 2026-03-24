@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { ArrowLeft, RefreshCw, TrendingUp, ChevronUp, ChevronDown, Minus, Share2, X, Check, BarChart2 } from 'lucide-react';
 import type { ProjectResult } from '@/lib/analyzer/aggregate';
@@ -98,6 +99,10 @@ export default function ProjectPage() {
     const gradeColor: Record<string, string> = {
         Excellent: '#22c55e', Good: '#3b82f6', Fair: '#f59e0b', Critical: '#ef4444',
     };
+    const deepFileCount = project.fileResults.filter((f) => f.mode === 'deep').length;
+    const quickFileCount = project.fileResults.filter((f) => f.mode === 'quick').length;
+    const correctnessFailedCount = project.fileResults.filter((f) => f.correctnessStatus === 'fail').length;
+    const correctnessUnknownCount = project.fileResults.filter((f) => f.correctnessStatus === 'unknown').length;
 
     async function handleShare() {
         const p = project;  // capture non-null snapshot for TS narrowing
@@ -170,7 +175,10 @@ export default function ProjectPage() {
 
             {/* ── Header ── */}
             <div className="analyze-header">
-                <h1 className="analyze-title">Project Report</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h1 className="analyze-title">Project Report</h1>
+                    <span className="mode-badge mode-quick">Mixed Deep + Quick Modes</span>
+                </div>
                 <div className="analyze-issue-summary">
                     <span className="pill pill-clean">{project.totalFiles} files</span>
                     <span className="pill pill-clean">{project.totalLines.toLocaleString()} lines</span>
@@ -180,6 +188,28 @@ export default function ProjectPage() {
                     <button className="share-trigger-btn" onClick={() => setShowShareModal(true)}>
                         <Share2 size={13} /> Share Report
                     </button>
+                </div>
+            </div>
+
+            <div className="correctness-row">
+                <div className={`glass-card correctness-card ${correctnessFailedCount > 0 ? 'correctness-fail' : (correctnessUnknownCount > 0 ? 'correctness-unknown' : 'correctness-pass')}`}>
+                    <h2 className="card-title">Correctness Gate</h2>
+                    <div className="correctness-status-line">
+                        <span className="correctness-pill">
+                            {correctnessFailedCount > 0 ? 'Fail' : (correctnessUnknownCount > 0 ? 'Partially checked' : 'Pass')}
+                        </span>
+                        <span className="correctness-subtext">
+                            ZIP file-level correctness status
+                        </span>
+                    </div>
+                    <p className="correctness-warning">
+                        {correctnessFailedCount > 0
+                            ? `${correctnessFailedCount} file${correctnessFailedCount > 1 ? 's' : ''} failed syntax checks.`
+                            : 'No syntax failures found in checked files.'}
+                    </p>
+                    <p className="correctness-subtext">
+                        Coverage in this scan: {deepFileCount} deep files checked, {quickFileCount} quick files not yet syntax-checked.
+                    </p>
                 </div>
             </div>
 
@@ -353,7 +383,7 @@ export default function ProjectPage() {
 
                         {!user && (
                             <p className="modal-signin-hint">
-                                💡 <a href="/sign-in">Sign in</a> to save this scan to your dashboard and track progress over time.
+                                💡 <Link href="/sign-in">Sign in</Link> to save this scan to your dashboard and track progress over time.
                             </p>
                         )}
                     </div>

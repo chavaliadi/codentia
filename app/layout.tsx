@@ -8,7 +8,7 @@ import Provider from "./provider";
 const outfit = Outfit({ subsets: ['latin'], weight: ['400', '700'] });
 
 export const metadata: Metadata = {
-  title: "GeoMind",
+  title: "CodeVitals",
   description: "An AI-powered project management tool.",
 };
 

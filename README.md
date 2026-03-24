@@ -8,14 +8,14 @@
 
 ## What Is This?
 
-CodeVitals is a web SaaS that gives developers a structured health score for their code. It uses:
+CodeVitals is a web SaaS that gives developers a structured maintainability score for their code, plus an explicit correctness gate where available. It uses:
 
 - **Static analysis** (AST-based for JS/TS, regex-based for everything else) for deterministic, reproducible metrics
 - **AI-powered explanation** (Llama 3 70B via Groq) for human-readable insights and actionable recommendations
 - **Evolution tracking** (Convex) to show how your codebase improves scan-to-scan
 - **Shareable reports** so you can drop a link in a PR or README
 
-**It's not a linter, and it's not a vibe check.** It's a structured health report — like getting bloodwork done for your code.
+**It is not a guarantee that code is runtime-correct.** It is a structured health report with syntax/correctness signals where supported — like getting bloodwork done for your code.
 
 ---
 
@@ -94,6 +94,20 @@ ai-project/
 ---
 
 ## Analysis Engine
+
+### Correctness vs Maintainability (Product Contract)
+
+CodeVitals reports two separate signals:
+
+- **Correctness Gate**: syntax/type/lint status where available
+- **Maintainability Score**: structural quality metrics
+
+If correctness fails, that status should be treated as primary. A maintainability score does not imply code is executable or bug-free.
+
+| Mode | Languages | Correctness Gate | Maintainability |
+|------|-----------|------------------|-----------------|
+| **Deep** | JS/TS | Syntax-aware (`pass/fail`) | AST structural metrics |
+| **Quick** | Python, Go, Java, C++, etc. | Python/Go syntax check, others `unknown` (rolling out by language) | Text/regex structural metrics |
 
 ### Deep Analysis (JavaScript / TypeScript)
 Uses Babel to parse a real AST. Metrics extracted:

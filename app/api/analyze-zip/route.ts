@@ -4,6 +4,7 @@ import { parseCode } from '@/lib/analyzer/parser';
 import { computeMetrics } from '@/lib/analyzer/metrics';
 import { computeScore, sortIssues } from '@/lib/analyzer/scorer';
 import { analyzeText } from '@/lib/analyzer/textAnalyzer';
+import { applyCorrectnessCap, checkSyntaxByLanguage } from '@/lib/analyzer/syntaxCheck';
 import { aggregateResults, FileResult } from '@/lib/analyzer/aggregate';
 import { GroqProvider } from '@/lib/ai/groq';
 import type { AnalysisResult } from '@/lib/analyzer/types';
@@ -58,6 +59,13 @@ function getLanguageId(filename: string): string {
     return extMap[ext] || ext;
 }
 
+function getSyntaxLanguageId(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop() ?? '';
+    if (ext === 'py') return 'py';
+    if (ext === 'go') return 'go';
+    return 'unknown';
+}
+
 async function analyzeFile(
     filename: string,
     code: string,
@@ -65,19 +73,50 @@ async function analyzeFile(
 ): Promise<Omit<AnalysisResult, 'aiExplanation'>> {
     if (mode === 'deep') {
         try {
-            const ast = parseCode(code, getLang(filename));
+            const { ast, syntaxErrors } = parseCode(code, getLang(filename));
             const { summary, issues: rawIssues } = computeMetrics(ast, code);
-            const { score, grade } = computeScore(summary, rawIssues, 'deep');
+            const { score } = computeScore(summary, rawIssues, 'deep');
             const issues = sortIssues(rawIssues);
-            return { score, grade, issues, metrics: summary };
+            const correctnessStatus: 'pass' | 'fail' = syntaxErrors.length > 0 ? 'fail' : 'pass';
+            const corrected = applyCorrectnessCap(score, {
+                status: correctnessStatus,
+                syntaxErrors,
+            });
+            return {
+                score: corrected.score,
+                grade: corrected.grade,
+                issues,
+                metrics: summary,
+                correctness: {
+                    status: correctnessStatus,
+                    syntaxErrors,
+                },
+            };
         } catch {
             // fallback to text if AST fails
             const languageId = getLanguageId(filename);
-            return await analyzeText(code, languageId);
+            const fallback = await analyzeText(code, languageId);
+            return {
+                ...fallback,
+                correctness: {
+                    status: 'unknown',
+                    syntaxErrors: [],
+                },
+            };
         }
     }
     const languageId = getLanguageId(filename);
-    return await analyzeText(code, languageId);
+    const quickResult = await analyzeText(code, languageId);
+    const quickCorrectness = checkSyntaxByLanguage(code, getSyntaxLanguageId(filename));
+    const corrected = applyCorrectnessCap(quickResult.score, quickCorrectness);
+    return {
+        ...quickResult,
+        score: corrected.score,
+        grade: corrected.grade,
+        correctness: {
+            ...quickCorrectness,
+        },
+    };
 }
 
 export async function POST(req: NextRequest) {
@@ -137,6 +176,8 @@ export async function POST(req: NextRequest) {
                 filename,
                 score: result.score,
                 grade: result.grade,
+                correctnessStatus: result.correctness?.status ?? 'unknown',
+                syntaxErrorCount: result.correctness?.syntaxErrors?.length ?? 0,
                 topIssue: result.issues[0]?.message?.slice(0, 100) ?? null,
                 issueCount: result.issues.length,
                 metrics: result.metrics,

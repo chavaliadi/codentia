@@ -174,7 +174,7 @@ export default function HomePage() {
         </h1>
         <p className="hero-sub">
           Deep analysis for JS/TS projects. Quick scan for Python, Go, Java, C++, Rust and more.
-          Paste a snippet or upload your whole project as a ZIP.
+          Paste a snippet or upload your whole project as a ZIP. Maintainability and correctness are reported separately.
         </p>
       </section>
 
@@ -260,8 +260,8 @@ export default function HomePage() {
 
             <p className="analyzer-hint">
               {isDeep
-                ? '🔬 Deep Analysis — full AST metrics for JS/TS'
-                : '⚡ Quick Scan — pattern-based health check'}
+                ? '🔬 Deep Analysis — includes syntax-aware correctness gate for JS/TS'
+                : '⚡ Quick Scan — structural health check (+ syntax gate for Python/Go)'}
               {' · '}Max 100KB
             </p>
           </>

@@ -49,11 +49,34 @@ export interface MetricsSummary {
   totalLines: number;
 }
 
+export type CorrectnessStatus = 'pass' | 'fail' | 'unknown';
+
+export interface SyntaxErrorDetail {
+  message: string;
+  line?: number;
+  column?: number;
+  reasonCode?: string;
+}
+
+export interface LintErrorDetail {
+  rule: string;
+  message: string;
+  line?: number;
+  column?: number;
+}
+
+export interface CorrectnessResult {
+  status: CorrectnessStatus;
+  syntaxErrors: SyntaxErrorDetail[];
+  lintErrors?: LintErrorDetail[];
+}
+
 export interface AnalysisResult {
   score: number;
   grade: Grade;
   issues: Issue[];
   metrics: MetricsSummary;
+  correctness?: CorrectnessResult;
   aiExplanation: string;
   estimatedImprovement?: number; // pts if quick wins addressed
 }

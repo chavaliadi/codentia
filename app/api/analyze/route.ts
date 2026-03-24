@@ -3,8 +3,9 @@ import { parseCode } from '@/lib/analyzer/parser';
 import { computeMetrics } from '@/lib/analyzer/metrics';
 import { computeScore, sortIssues, estimateImprovement } from '@/lib/analyzer/scorer';
 import { analyzeText } from '@/lib/analyzer/textAnalyzer';
+import { applyCorrectnessCap, checkSyntaxByLanguage } from '@/lib/analyzer/syntaxCheck';
 import { GroqProvider } from '@/lib/ai/groq';
-import type { AnalysisResult } from '@/lib/analyzer/types';
+import type { AnalysisResult, CorrectnessResult } from '@/lib/analyzer/types';
 
 const ai = new GroqProvider();
 
@@ -28,22 +29,32 @@ export async function POST(req: NextRequest) {
 
         const isDeep = DEEP_LANGUAGES.has(language);
         let analysisBase: Omit<AnalysisResult, 'aiExplanation'>;
+        let correctness: CorrectnessResult;
 
         if (isDeep) {
             // 🔬 Deep Mode — full AST analysis for JS/TS
             let ast;
             try {
-                ast = parseCode(code, language as 'js' | 'ts');
+                const parsed = parseCode(code, language as 'js' | 'ts');
+                ast = parsed.ast;
+                correctness = {
+                    status: parsed.syntaxErrors.length > 0 ? 'fail' : 'pass',
+                    syntaxErrors: parsed.syntaxErrors,
+                };
             } catch {
                 return NextResponse.json({ error: 'Failed to parse code. Check for syntax errors.' }, { status: 422 });
             }
             const { summary, issues: rawIssues } = computeMetrics(ast, code);
-            const { score, grade } = computeScore(summary, rawIssues, 'deep');
+            const { score } = computeScore(summary, rawIssues, 'deep');
             const issues = sortIssues(rawIssues);
-            analysisBase = { score, grade, issues, metrics: summary };
+            const corrected = applyCorrectnessCap(score, correctness);
+            analysisBase = { score: corrected.score, grade: corrected.grade, issues, metrics: summary, correctness };
         } else {
             // ⚡ Quick Scan Mode — text-based for all other languages
             analysisBase = await analyzeText(code, language);
+            correctness = checkSyntaxByLanguage(code, language);
+            const corrected = applyCorrectnessCap(analysisBase.score, correctness);
+            analysisBase = { ...analysisBase, score: corrected.score, grade: corrected.grade, correctness };
         }
 
         // AI explanation (always) — pass mode context for file-aware prompt

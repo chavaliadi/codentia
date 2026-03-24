@@ -48,6 +48,12 @@ export default function AnalyzePage() {
     const highCount = result.issues.filter((i) => i.severity === 'high').length;
     const mediumCount = result.issues.filter((i) => i.severity === 'medium').length;
     const lowCount = result.issues.filter((i) => i.severity === 'low').length;
+    const correctness = result.correctness ?? { status: 'unknown' as const, syntaxErrors: [] };
+    const hasQuickSyntaxCheck = language === 'py' || language === 'go';
+    const correctnessLabel =
+        correctness.status === 'pass' ? 'Pass' :
+            correctness.status === 'fail' ? 'Fail' :
+                'Not checked';
 
     return (
         <main className="analyze-main">
@@ -95,6 +101,34 @@ export default function AnalyzePage() {
                 </div>
             </div>
 
+            <div className="correctness-row">
+                <div className={`glass-card correctness-card correctness-${correctness.status}`}>
+                    <h2 className="card-title">Correctness Gate</h2>
+                    <div className="correctness-status-line">
+                        <span className="correctness-pill">{correctnessLabel}</span>
+                        <span className="correctness-subtext">
+                            {languageMode === 'deep'
+                                ? 'Syntax-aware check'
+                                : (hasQuickSyntaxCheck ? 'Quick mode syntax check (Python/Go)' : 'Quick mode syntax check not available yet')}
+                        </span>
+                    </div>
+                    {correctness.status === 'fail' && correctness.syntaxErrors.length > 0 && (
+                        <ul className="correctness-errors">
+                            {correctness.syntaxErrors.slice(0, 3).map((err, idx) => (
+                                <li key={idx}>
+                                    {err.line ? `Line ${err.line}` : 'Unknown line'}: {err.message}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {correctness.status === 'unknown' && (
+                        <p className="correctness-warning">
+                            Maintainability score does not confirm syntax or runtime correctness.
+                        </p>
+                    )}
+                </div>
+            </div>
+
             {/* ── Top Row: Score + AI Insight ────────────────────────── */}
             <div className="top-row">
                 {/* Score Card */}
@@ -115,7 +149,7 @@ export default function AnalyzePage() {
                             <span className="meta-value">{result.issues.length}</span>
                         </div>
                     </div>
-                    {languageMode === 'quick' && (
+                    {languageMode === 'quick' && correctness.status === 'unknown' && (
                         <div className="quick-scan-note">
                             ⚠️ This score reflects structure only. Syntax errors and runtime issues were not validated.
                         </div>

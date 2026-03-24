@@ -4,6 +4,8 @@ export interface FileResult {
     filename: string;
     score: number;
     grade: Grade;
+    correctnessStatus?: 'pass' | 'fail' | 'unknown';
+    syntaxErrorCount?: number;
     topIssue: string | null;
     issueCount: number;
     metrics: MetricsSummary;

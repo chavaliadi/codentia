@@ -16,6 +16,8 @@
   --border: rgba(255, 255, 255, 0.08);
   --text: #e8e8f0;
   --text-muted: #6b7280;
+  --code-text: #c9d1d9;
+  --code-placeholder: #3d3d55;
   --accent: #818cf8;
   --accent-glow: #818cf840;
   --radius: 14px;
@@ -30,6 +32,8 @@
   --border: rgba(0, 0, 0, 0.10);
   --text: #111827;
   --text-muted: #6b7280;
+  --code-text: #111827;
+  --code-placeholder: #6b7280;
   --accent: #5b5fcf;
   --accent-glow: #5b5fcf30;
   --nav-bg: rgba(240, 242, 248, 0.90);
@@ -282,7 +286,7 @@ body {
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: #c9d1d9;
+  color: var(--code-text);
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
   font-size: 13.5px;
   line-height: 1.65;
@@ -299,7 +303,7 @@ body {
 }
 
 .code-textarea::placeholder {
-  color: #3d3d55;
+  color: var(--code-placeholder);
 }
 
 .analyzer-error {
@@ -523,6 +527,75 @@ body {
   background: rgba(245, 158, 11, 0.1);
   color: #fdba74;
   border-left-color: #f59e0b;
+}
+
+/* Correctness card */
+.correctness-row {
+  max-width: 1100px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.correctness-card {
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.correctness-status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.correctness-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.correctness-subtext {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.correctness-errors {
+  margin-top: 10px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.correctness-warning {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.correctness-pass .correctness-pill {
+  color: #22c55e;
+  border-color: #22c55e40;
+  background: #22c55e12;
+}
+
+.correctness-fail .correctness-pill {
+  color: #ef4444;
+  border-color: #ef444440;
+  background: #ef444412;
+}
+
+.correctness-unknown .correctness-pill {
+  color: #f59e0b;
+  border-color: #f59e0b40;
+  background: #f59e0b12;
 }
 
 /* Glass cards */
@@ -1318,6 +1391,7 @@ body {
 
   .metrics-section,
   .issues-section,
+  .correctness-row,
   .analyze-cta,
   .category-section,
   .improvements-section,
