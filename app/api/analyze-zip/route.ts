@@ -18,6 +18,8 @@ const QUICK_EXTENSIONS = new Set([
     '.swift', '.kt', '.php', '.scala', '.r', '.m',
 ]);
 const EXCLUDED_PATHS = ['node_modules', '.next', 'dist', 'build', '.git', 'vendor', '__pycache__'];
+const ZIP_SOFT_LIMIT_BYTES = 3 * 1024 * 1024;
+const ZIP_HARD_LIMIT_BYTES = 4 * 1024 * 1024; // Vercel-safe ceiling for request payloads
 
 function shouldInclude(entryName: string): boolean {
     const lower = entryName.toLowerCase();
@@ -133,13 +135,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Please upload a .zip file.' }, { status: 400 });
         }
 
-        // 3MB soft limit for optimal performance
-        if (file.size > 3 * 1024 * 1024 && file.size <= 10 * 1024 * 1024) {
+        // Soft warning range for performance
+        if (file.size > ZIP_SOFT_LIMIT_BYTES && file.size <= ZIP_HARD_LIMIT_BYTES) {
             console.warn(`[analyze-zip] Large ZIP uploaded: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
         }
 
-        if (file.size > 10 * 1024 * 1024) { // 10 MB hard limit
-            return NextResponse.json({ error: 'ZIP file must be under 10MB for optimal analysis.' }, { status: 400 });
+        if (file.size > ZIP_HARD_LIMIT_BYTES) {
+            return NextResponse.json(
+                { error: 'ZIP file is too large for deployed analysis. Keep it under 4MB or upload a smaller subset.' },
+                { status: 400 }
+            );
         }
 
         // Extract ZIP

@@ -112,8 +112,17 @@ export default function HomePage() {
       const form = new FormData();
       form.append('file', zipFile);
       const res = await fetch('/api/analyze-zip', { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Analysis failed. Try again.'); return; }
+      let data: unknown = null;
+      try { data = await res.json(); } catch { /* non-JSON error page (e.g., 413) */ }
+      if (!res.ok) {
+        if (res.status === 413) {
+          setError('ZIP is too large for deployed analysis. Keep it under 4MB or upload a smaller subset.');
+        } else {
+          const parsed = data as { error?: string } | null;
+          setError(parsed?.error ?? 'Analysis failed. Try again.');
+        }
+        return;
+      }
       sessionStorage.setItem('cv_project', JSON.stringify(data));
       sessionStorage.setItem('cv_project_name', projectName.trim() || zipFile.name.replace('.zip', ''));
       sessionStorage.setItem('cv_language_mode', 'mixed');
@@ -309,7 +318,7 @@ export default function HomePage() {
                 <>
                   <p className="dropzone-text">Drop your .zip here or click to browse</p>
                   <p className="dropzone-sub">
-                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · Max 10MB · Up to 50 files
+                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · Max 4MB · Up to 50 files
                   </p>
                 </>
               )}
