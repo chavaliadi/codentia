@@ -99,10 +99,15 @@ export default function ProjectPage() {
     const gradeColor: Record<string, string> = {
         Excellent: '#22c55e', Good: '#3b82f6', Fair: '#f59e0b', Critical: '#ef4444',
     };
-    const deepFileCount = project.fileResults.filter((f) => f.mode === 'deep').length;
-    const quickFileCount = project.fileResults.filter((f) => f.mode === 'quick').length;
-    const correctnessFailedCount = project.fileResults.filter((f) => f.correctnessStatus === 'fail').length;
-    const correctnessUnknownCount = project.fileResults.filter((f) => f.correctnessStatus === 'unknown').length;
+    const correctnessFailedCount = project.correctnessSummary.filesFailedSyntax;
+    const correctnessUnknownCount = project.correctnessSummary.filesUnchecked;
+    const confidenceBand = project.correctnessSummary.confidenceBand;
+
+    const confidencePillText =
+        confidenceBand === 'high' ? 'High confidence' :
+            confidenceBand === 'medium' ? 'Medium confidence' :
+                confidenceBand === 'low' ? 'Low confidence' :
+                    'Unknown confidence';
 
     async function handleShare() {
         const p = project;  // capture non-null snapshot for TS narrowing
@@ -208,7 +213,10 @@ export default function ProjectPage() {
                             : 'No syntax failures found in checked files.'}
                     </p>
                     <p className="correctness-subtext">
-                        Coverage in this scan: {deepFileCount} deep files checked, {quickFileCount} quick files not yet syntax-checked.
+                        Coverage in this scan: {project.correctnessSummary.filesChecked} checked files, {project.correctnessSummary.filesUnchecked} unchecked.
+                    </p>
+                    <p className="correctness-subtext">
+                        Confidence: {confidencePillText}.
                     </p>
                 </div>
             </div>
@@ -298,7 +306,7 @@ export default function ProjectPage() {
                         </thead>
                         <tbody>
                             {project.fileResults.map((file, i) => (
-                                <tr key={i} className={file.score < 60 ? 'row-warn' : ''}>
+                                <tr key={i} className={(file.correctnessStatus === 'fail' || file.score < 60) ? 'row-warn' : ''}>
                                     <td className="file-name">{file.filename}</td>
                                     <td className="file-score">
                                         {scoreIcon(file.score)}
@@ -315,7 +323,7 @@ export default function ProjectPage() {
                                         </span>
                                     </td>
                                     <td className="file-top-issue">
-                                        {file.topIssue ? file.topIssue.slice(0, 80) + (file.topIssue.length > 80 ? '…' : '') : '—'}
+                                        {file.topIssue ?? '—'}
                                     </td>
                                 </tr>
                             ))}

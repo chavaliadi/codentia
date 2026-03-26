@@ -1357,7 +1357,10 @@ body {
 .file-top-issue {
   color: var(--text-muted);
   font-size: 12px;
-  max-width: 320px;
+  max-width: 520px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
 }
 
 /* ─── Phase 2: Project summary text ─────────────────────────── */

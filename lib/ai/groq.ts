@@ -10,7 +10,7 @@ function buildPrompt(
     metrics: MetricsSummary,
     issues: Issue[],
     score: number,
-    context?: { filename?: string; mode?: 'deep' | 'quick' }
+    context?: { filename?: string; mode?: 'deep' | 'quick'; language?: string }
 ): string {
     const fileCtx = context?.filename
         ? `File: ${context.filename} (${context.mode === 'deep' ? 'Deep Analysis — AST' : 'Quick Scan — pattern-based'})`
@@ -57,6 +57,16 @@ function buildPrompt(
         patternHints += 'Long if-else-if chains detected — suggest switch statements or lookup objects for clarity.\n';
     }
 
+    const quickSyntaxLanguages = new Set(['py', 'python', 'go', 'golang']);
+    const languageToken = context?.language?.toLowerCase();
+    const quickHasSyntaxValidation = context?.mode === 'quick' && !!languageToken && quickSyntaxLanguages.has(languageToken);
+
+    const quickSafetyLine = context?.mode === 'quick'
+        ? quickHasSyntaxValidation
+            ? '⚠️ IMPORTANT: This is a Quick Scan, and syntax was validated for Python/Go. Runtime correctness was NOT validated.'
+            : '⚠️ IMPORTANT: This is a Quick Scan (pattern-based analysis). Syntax errors and runtime correctness were NOT validated. Focus your suggestions on structural improvements only.'
+        : '';
+
     return `You are a supportive senior engineer helping a teammate improve their code.
 Your tone is calm, constructive, and encouraging — like a good code reviewer, not a strict grader.
 Do NOT use alarmist language. Do NOT fabricate issues not in the METRICS below.
@@ -64,7 +74,7 @@ Start by acknowledging what is working, then gently suggest the most impactful i
 
 CONTEXT: ${fileCtx}
 
-${context?.mode === 'quick' ? '⚠️ IMPORTANT: This is a Quick Scan (pattern-based analysis). Syntax errors and runtime correctness were NOT validated. Focus your suggestions on structural improvements only.' : ''}
+${quickSafetyLine ? `${quickSafetyLine}\n` : ''}
 
 METRICS:
 - Code Health: ${score}/100
@@ -148,7 +158,7 @@ export class GroqProvider implements AIProvider {
         metrics: MetricsSummary,
         issues: Issue[],
         score: number,
-        context?: { filename?: string; mode?: 'deep' | 'quick' }
+        context?: { filename?: string; mode?: 'deep' | 'quick'; language?: string }
     ): Promise<string> {
         try {
             const completion = await groq.chat.completions.create({

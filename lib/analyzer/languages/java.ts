@@ -6,7 +6,8 @@ function detectGenericException(code: string): Issue[] {
     const genericExceptionPattern = /catch\s*\(\s*Exception\s+\w+\s*\)/;
 
     code.split('\n').forEach((line, idx) => {
-        if (genericExceptionPattern.test(line)) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (genericExceptionPattern.test(clean)) {
             issues.push({
                 type: 'generic_exception',
                 category: 'language',
@@ -26,7 +27,8 @@ function detectPublicField(code: string): Issue[] {
     const publicFieldPattern = /public\s+(?!static\s+final)\w+\s+\w+\s*[=;]/;
 
     code.split('\n').forEach((line, idx) => {
-        if (publicFieldPattern.test(line) && !line.includes('public static final')) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (publicFieldPattern.test(clean) && !clean.includes('public static final')) {
             issues.push({
                 type: 'public_field',
                 category: 'language',
@@ -51,8 +53,9 @@ function detectLongMethod(code: string): Issue[] {
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+        const clean = line.replace(/\/\/.*$/, '').trim();
 
-        if (/^(public|private|protected)?\s*(static\s+)?\w+\s+\w+\s*\(/.test(line)) {
+        if (/^(public|private|protected)?\s*(static\s+)?\w+\s+\w+\s*\(/.test(clean)) {
             if (methodStartLine !== -1 && inMethod) {
                 const methodLength = i - methodStartLine - 1;
                 if (methodLength > 60) {
@@ -67,7 +70,7 @@ function detectLongMethod(code: string): Issue[] {
                 }
             }
 
-            const match = line.match(/\s+(\w+)\s*\(/);
+            const match = clean.match(/\s+(\w+)\s*\(/);
             methodName = match ? match[1] : 'unknown';
             methodStartLine = i;
             inMethod = true;
@@ -75,8 +78,8 @@ function detectLongMethod(code: string): Issue[] {
         }
 
         if (inMethod) {
-            braceCount += (line.match(/\{/g) || []).length;
-            braceCount -= (line.match(/\}/g) || []).length;
+            braceCount += (clean.match(/\{/g) || []).length;
+            braceCount -= (clean.match(/\}/g) || []).length;
 
             if (braceCount === 0 && methodStartLine !== i) {
                 const methodLength = i - methodStartLine - 1;
@@ -104,7 +107,8 @@ function detectEmptyCatch(code: string): Issue[] {
     const emptyCatchPattern = /catch\s*\(\s*\w+\s+\w+\s*\)\s*\{\s*\}/;
 
     code.split('\n').forEach((line, idx) => {
-        if (emptyCatchPattern.test(line)) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (emptyCatchPattern.test(clean)) {
             issues.push({
                 type: 'empty_catch',
                 category: 'language',

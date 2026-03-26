@@ -140,3 +140,21 @@ export const deleteScan = mutation({
         return { success: false };
     },
 });
+
+// ─── Delete all scans for a project ───────────────────────────────────────────
+export const deleteProjectScans = mutation({
+    args: { userId: v.string(), projectName: v.string() },
+    handler: async (ctx, args) => {
+        const scans = await ctx.db
+            .query("ScansTable")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        const target = scans.filter((s) => s.projectName === args.projectName);
+        for (const scan of target) {
+            await ctx.db.delete(scan._id);
+        }
+
+        return { success: true, deletedCount: target.length };
+    },
+});

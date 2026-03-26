@@ -55,9 +55,9 @@ export default function DashboardPage() {
     const router = useRouter();
     const [selectedProject, setSelectedProject] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
-    const [deletingScanId, setDeletingScanId] = useState<string | null>(null);
+    const [deletingProject, setDeletingProject] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const deleteScan = useMutation(api.scans.deleteScan);
+    const deleteProjectScans = useMutation(api.scans.deleteProjectScans);
 
     // Hydration guard — prevents Date.now() mismatch crash
     useEffect(() => { setMounted(true); }, []);
@@ -114,10 +114,17 @@ export default function DashboardPage() {
         setTimeout(() => setCopiedId(null), 2000);
     }
 
-    async function handleDelete(scanId: string) {
-        if (!user) return;
-        await deleteScan({ scanId, userId: user.id });
-        setDeletingScanId(null);
+    async function handleDeleteProject() {
+        if (!user || !activeProject) return;
+        const ok = window.confirm(`Delete all scans for "${activeProject}"? This cannot be undone.`);
+        if (!ok) return;
+        setDeletingProject(true);
+        try {
+            await deleteProjectScans({ userId: user.id, projectName: activeProject });
+            setSelectedProject(null);
+        } finally {
+            setDeletingProject(false);
+        }
     }
 
     return (
@@ -269,7 +276,18 @@ export default function DashboardPage() {
 
                                 {/* Scan history */}
                                 <div className="glass-card">
-                                    <h2 className="card-title">Scan History</h2>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                                        <h2 className="card-title" style={{ marginBottom: 0 }}>Scan History</h2>
+                                        <button
+                                            className="dash-icon-btn dash-icon-btn--danger"
+                                            title="Delete all scans for this project"
+                                            onClick={handleDeleteProject}
+                                            disabled={deletingProject}
+                                        >
+                                            <Trash2 size={14} />
+                                            {deletingProject ? 'Deleting…' : 'Delete Project History'}
+                                        </button>
+                                    </div>
                                     <div className="dash-scan-list">
                                         {[...activeScans].reverse().map((scan) => (
                                             <div key={scan.scanId} className="dash-scan-item">
@@ -293,21 +311,6 @@ export default function DashboardPage() {
                                                     >
                                                         {copiedId === scan.scanId ? '✓' : <Share2 size={14} />}
                                                     </button>
-                                                    {deletingScanId === scan.scanId ? (
-                                                        <div className="dash-delete-confirm">
-                                                            <span>Delete?</span>
-                                                            <button className="dash-confirm-yes" onClick={() => handleDelete(scan.scanId)}>Yes</button>
-                                                            <button className="dash-confirm-no" onClick={() => setDeletingScanId(null)}>Cancel</button>
-                                                        </div>
-                                                    ) : (
-                                                        <button
-                                                            className="dash-icon-btn dash-icon-btn--danger"
-                                                            title="Delete scan"
-                                                            onClick={() => setDeletingScanId(scan.scanId)}
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </div>
                                         ))}

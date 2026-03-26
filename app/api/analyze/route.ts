@@ -6,6 +6,7 @@ import { analyzeText } from '@/lib/analyzer/textAnalyzer';
 import { applyCorrectnessCap, checkSyntaxByLanguage } from '@/lib/analyzer/syntaxCheck';
 import { GroqProvider } from '@/lib/ai/groq';
 import type { AnalysisResult, CorrectnessResult } from '@/lib/analyzer/types';
+import { logAnalyticsEvent } from '@/lib/telemetry/logEvent';
 
 const ai = new GroqProvider();
 
@@ -57,12 +58,28 @@ export async function POST(req: NextRequest) {
             analysisBase = { ...analysisBase, score: corrected.score, grade: corrected.grade, correctness };
         }
 
+        // ── Telemetry (fire-and-forget) ───────────────────────────────────
+        // Telemetry is best-effort and must never break the main request.
+        const langToken = language.toLowerCase();
+        const quickHasSyntaxValidation = ['py', 'python', 'go', 'golang'].includes(langToken);
+        if (correctness.status === 'fail') {
+            logAnalyticsEvent(`syntax_fail:${langToken}`).catch(() => { });
+        } else if (correctness.status === 'unknown') {
+            logAnalyticsEvent(
+                quickHasSyntaxValidation
+                    ? `syntax_unknown_tool_missing_or_error:${langToken}`
+                    : `syntax_unsupported_quick:${langToken}`
+            ).catch(() => { });
+        } else {
+            logAnalyticsEvent(`syntax_pass:${langToken}`).catch(() => { });
+        }
+
         // AI explanation (always) — pass mode context for file-aware prompt
         const aiExplanation = await ai.explain(
             analysisBase.metrics,
             analysisBase.issues,
             analysisBase.score,
-            { mode: isDeep ? 'deep' : 'quick' }
+            { mode: isDeep ? 'deep' : 'quick', language }
         );
 
         const result: AnalysisResult = {

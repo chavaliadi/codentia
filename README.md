@@ -109,6 +109,16 @@ If correctness fails, that status should be treated as primary. A maintainabilit
 | **Deep** | JS/TS | Syntax-aware (`pass/fail`) | AST structural metrics |
 | **Quick** | Python, Go, Java, C++, etc. | Python/Go syntax check, others `unknown` (rolling out by language) | Text/regex structural metrics |
 
+### Supported Languages (Current)
+
+| Language | Mode | Correctness |
+|----------|------|-------------|
+| JavaScript / TypeScript | Deep | Syntax-aware (`pass/fail`) |
+| Python | Quick+ | Syntax check (`pass/fail`) |
+| Go | Quick+ | Syntax check (`pass/fail`, or `unknown` if Go toolchain missing) |
+| Java | Quick | `unknown` (structural + language-specific insights) |
+| C++ | Quick | `unknown` (structural + language-specific insights) |
+
 ### Deep Analysis (JavaScript / TypeScript)
 Uses Babel to parse a real AST. Metrics extracted:
 
@@ -201,7 +211,8 @@ Grade thresholds:
   - **Evolution banner** — score delta from last scan, supportive messaging
   - **Score trend chart** (Recharts line chart, oldest-first)
   - Category bar breakdown for latest scan
-  - Scan history list with per-scan share button
+  - Scan history list with share actions
+  - Project-level delete action (**Delete Project History**)
 - **Named projects** — user provides project name on upload, groups history
 
 ### 🔜 Phase 4 — Score Badge + GitHub Integration (PLANNED)
@@ -286,3 +297,19 @@ Phase 2 self-analysis — CodeVitals analyzed its own `lib/` folder:
 - Correct mode badges on all 20 files
 
 This is a real-world sanity check: the tool analyzed itself and produced accurate, actionable results.
+
+## Demo Checklist (2-3 mins)
+
+Use this flow before interviews or resume submissions:
+
+1. **Broken TypeScript** -> expect `Correctness Gate: Fail`, syntax errors visible, score capped.
+2. **Valid TypeScript** -> expect `Correctness Gate: Pass`, maintainability insights.
+3. **Broken Python** -> expect `Correctness Gate: Fail` (quick+ syntax support).
+4. **Java or C++ snippet** -> expect language-specific issues with `Correctness Gate: Unknown`.
+5. **ZIP upload** -> expect project score + correctness summary (`failed`, `unchecked`, confidence band).
+
+## Known Limits (Current)
+
+- Java and C++ are **Quick mode** today: language-specific structural insights are available, but correctness remains `unknown`.
+- Go correctness depends on local Go tooling (`gofmt`); if unavailable, status falls back to `unknown`.
+- Project trend grouping currently uses project name. Similarity-based grouping across renamed projects is a planned enhancement.

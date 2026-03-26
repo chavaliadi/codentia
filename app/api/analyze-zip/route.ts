@@ -8,6 +8,7 @@ import { applyCorrectnessCap, checkSyntaxByLanguage } from '@/lib/analyzer/synta
 import { aggregateResults, FileResult } from '@/lib/analyzer/aggregate';
 import { GroqProvider } from '@/lib/ai/groq';
 import type { AnalysisResult } from '@/lib/analyzer/types';
+import { logAnalyticsEvent } from '@/lib/telemetry/logEvent';
 
 const ai = new GroqProvider();
 
@@ -189,6 +190,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Could not analyze any files in the ZIP.' }, { status: 422 });
         }
 
+        // ── Telemetry (fire-and-forget) ───────────────────────────────────
+        // Best-effort only; never block request completion.
+        const syntaxFailCount = fileResults.filter(f => f.correctnessStatus === 'fail').length;
+        const syntaxUnknownCount = fileResults.filter(f => f.correctnessStatus === 'unknown').length;
+
+        const syntaxUnsupportedQuickCount = fileResults.filter(f => {
+            if (f.mode !== 'quick') return false;
+            const ext = f.filename.toLowerCase().split('.').pop() ?? '';
+            return f.correctnessStatus === 'unknown' && !['py', 'python', 'go', 'golang'].includes(ext);
+        }).length;
+
+        logAnalyticsEvent(`syntax_fail_zip_count:${syntaxFailCount}`).catch(() => { });
+        logAnalyticsEvent(`syntax_unknown_zip_count:${syntaxUnknownCount}`).catch(() => { });
+        logAnalyticsEvent(`syntax_unsupported_quick_zip_count:${syntaxUnsupportedQuickCount}`).catch(() => { });
+
         // Get AI explanation for the project-level view
         const worstFile = [...fileResults].sort((a, b) => a.score - b.score)[0];
         const avgScore = Math.round(fileResults.reduce((s, f) => s + f.score, 0) / fileResults.length);
@@ -216,7 +232,11 @@ export async function POST(req: NextRequest) {
                 message: `Weakest file: ${worstFile.filename} (score ${worstFile.score}/100)`
             }] : [],
             avgScore,
-            { filename: worstFile?.filename, mode: worstFile ? getMode(worstFile.filename) : 'quick' }
+            {
+                filename: worstFile?.filename,
+                mode: worstFile ? getMode(worstFile.filename) : 'quick',
+                language: worstFile ? getLanguageId(worstFile.filename) : undefined,
+            }
         );
 
         const project = aggregateResults(fileResults, aiExplanation);

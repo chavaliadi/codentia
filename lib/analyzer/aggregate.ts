@@ -19,10 +19,22 @@ export interface ProjectResult {
     fileResults: FileResult[];
     topImprovements: TopImprovement[];
     categoryScores: CategoryScores;
+    correctnessSummary: CorrectnessSummary;
     totalFiles: number;
     totalLines: number;
     totalFunctions: number;
     aiExplanation: string;
+}
+
+export type CorrectnessConfidenceBand = 'high' | 'medium' | 'low' | 'unknown';
+
+export interface CorrectnessSummary {
+    filesFailedSyntax: number;
+    filesUnchecked: number;
+    filesChecked: number;
+    passFiles: number;
+    failFiles: number;
+    confidenceBand: CorrectnessConfidenceBand;
 }
 
 export interface TopImprovement {
@@ -60,12 +72,35 @@ export function aggregateResults(
             fileResults: [],
             topImprovements: [],
             categoryScores: { readability: 0, maintainability: 0, cleanliness: 0, structure: 0 },
+            correctnessSummary: {
+                filesFailedSyntax: 0,
+                filesUnchecked: 0,
+                filesChecked: 0,
+                passFiles: 0,
+                failFiles: 0,
+                confidenceBand: 'unknown',
+            },
             totalFiles: 0,
             totalLines: 0,
             totalFunctions: 0,
             aiExplanation,
         };
     }
+
+    // ── Correctness aggregation ──────────────────────────────────────────
+    const passFiles = fileResults.filter(f => f.correctnessStatus === 'pass').length;
+    const failFiles = fileResults.filter(f => f.correctnessStatus === 'fail').length;
+    const uncheckedFiles = fileResults.filter(f => f.correctnessStatus === 'unknown').length;
+
+    const filesChecked = Math.max(0, fileResults.length - uncheckedFiles);
+    const failedSyntax = failFiles; // currently: only "fail" represents failed syntax check
+
+    const checkedRatio = fileResults.length === 0 ? 0 : filesChecked / fileResults.length;
+    const confidenceBand: CorrectnessConfidenceBand =
+        filesChecked === 0 ? 'unknown' :
+            checkedRatio >= 0.8 ? 'high' :
+                checkedRatio >= 0.4 ? 'medium' :
+                    'low';
 
     // Weighted project score — worse files pull score down more
     const sorted = [...fileResults].sort((a, b) => a.score - b.score);
@@ -157,6 +192,14 @@ export function aggregateResults(
         fileResults: sorted.reverse(), // best first in UI
         topImprovements,
         categoryScores,
+        correctnessSummary: {
+            filesFailedSyntax: failedSyntax,
+            filesUnchecked: uncheckedFiles,
+            filesChecked,
+            passFiles,
+            failFiles,
+            confidenceBand,
+        },
         totalFiles: fileResults.length,
         totalLines,
         totalFunctions,

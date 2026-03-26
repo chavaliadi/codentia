@@ -6,7 +6,8 @@ function detectRawPointer(code: string): Issue[] {
     const newDeletePattern = /\b(new|delete)\s+/;
 
     code.split('\n').forEach((line, idx) => {
-        if (newDeletePattern.test(line) && !line.includes('//')) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (newDeletePattern.test(clean)) {
             issues.push({
                 type: 'raw_pointer',
                 category: 'language',
@@ -26,7 +27,8 @@ function detectUsingNamespaceStd(code: string): Issue[] {
     const usingNamespacePattern = /using\s+namespace\s+std\s*;/;
 
     code.split('\n').forEach((line, idx) => {
-        if (usingNamespacePattern.test(line)) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (usingNamespacePattern.test(clean)) {
             issues.push({
                 type: 'using_namespace_std',
                 category: 'language',
@@ -46,7 +48,8 @@ function detectEmptyDestructor(code: string): Issue[] {
     const emptyDestructorPattern = /~\w+\s*\(\s*\)\s*\{\s*\}/;
 
     code.split('\n').forEach((line, idx) => {
-        if (emptyDestructorPattern.test(line)) {
+        const clean = line.replace(/\/\/.*$/, '');
+        if (emptyDestructorPattern.test(clean)) {
             issues.push({
                 type: 'empty_destructor',
                 category: 'language',
@@ -71,8 +74,9 @@ function detectLongFunction(code: string): Issue[] {
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+        const clean = line.replace(/\/\/.*$/, '').trim();
 
-        if (/^\w+\s+[\w:]+\s*\(/.test(line) && !line.includes('class ') && !line.includes('struct ')) {
+        if (/^\w+\s+[\w:]+\s*\(/.test(clean) && !clean.includes('class ') && !clean.includes('struct ')) {
             if (funcStartLine !== -1 && inFunc) {
                 const funcLength = i - funcStartLine - 1;
                 if (funcLength > 60) {
@@ -87,7 +91,7 @@ function detectLongFunction(code: string): Issue[] {
                 }
             }
 
-            const match = line.match(/\s+([\w:]+)\s*\(/);
+            const match = clean.match(/\s+([\w:]+)\s*\(/);
             funcName = match ? match[1] : 'unknown';
             funcStartLine = i;
             inFunc = true;
@@ -95,8 +99,8 @@ function detectLongFunction(code: string): Issue[] {
         }
 
         if (inFunc) {
-            braceCount += (line.match(/\{/g) || []).length;
-            braceCount -= (line.match(/\}/g) || []).length;
+            braceCount += (clean.match(/\{/g) || []).length;
+            braceCount -= (clean.match(/\}/g) || []).length;
 
             if (braceCount === 0 && funcStartLine !== i) {
                 const funcLength = i - funcStartLine - 1;
