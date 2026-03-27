@@ -18,8 +18,8 @@ const QUICK_EXTENSIONS = new Set([
     '.swift', '.kt', '.php', '.scala', '.r', '.m',
 ]);
 const EXCLUDED_PATHS = ['node_modules', '.next', 'dist', 'build', '.git', 'vendor', '__pycache__'];
-const ZIP_SOFT_LIMIT_BYTES = 3 * 1024 * 1024;
-const ZIP_HARD_LIMIT_BYTES = 4 * 1024 * 1024; // Vercel-safe ceiling for request payloads
+const ZIP_SOFT_LIMIT_BYTES = 20 * 1024 * 1024;
+const ZIP_HARD_LIMIT_BYTES = 25 * 1024 * 1024; // App-level cap (hosting platform may enforce stricter limits)
 
 function shouldInclude(entryName: string): boolean {
     const lower = entryName.toLowerCase();
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
 
         if (file.size > ZIP_HARD_LIMIT_BYTES) {
             return NextResponse.json(
-                { error: 'ZIP file is too large for deployed analysis. Keep it under 4MB or upload a smaller subset.' },
+                { error: 'ZIP file is too large for deployed analysis. Keep it under 25MB or upload a smaller subset.' },
                 { status: 400 }
             );
         }

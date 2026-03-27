@@ -116,7 +116,7 @@ export default function HomePage() {
       try { data = await res.json(); } catch { /* non-JSON error page (e.g., 413) */ }
       if (!res.ok) {
         if (res.status === 413) {
-          setError('ZIP is too large for deployed analysis. Keep it under 4MB or upload a smaller subset.');
+          setError('ZIP is too large for deployed analysis. Keep it under 25MB or upload a smaller subset.');
         } else {
           const parsed = data as { error?: string } | null;
           setError(parsed?.error ?? 'Analysis failed. Try again.');
@@ -318,7 +318,7 @@ export default function HomePage() {
                 <>
                   <p className="dropzone-text">Drop your .zip here or click to browse</p>
                   <p className="dropzone-sub">
-                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · Max 4MB · Up to 50 files
+                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · Max 25MB · Up to 50 files
                   </p>
                 </>
               )}
