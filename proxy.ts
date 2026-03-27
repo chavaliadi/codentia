@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher(
     '/scan(.*)',
     '/api/analyze(.*)',
     '/api/analyze-zip(.*)',
+    '/api/blob-upload(.*)',
   ])
 
 export default clerkMiddleware(async (auth, req) => {

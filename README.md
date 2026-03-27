@@ -42,6 +42,7 @@ CodeVitals is a web SaaS that gives developers a structured maintainability scor
 | **AI** | Groq API — Llama 3 70B |
 | **AST Parsing** | Babel (`@babel/parser`, `@babel/traverse`, `@babel/types`) |
 | **ZIP Handling** | adm-zip |
+| **Large ZIP Uploads** | Vercel Blob (`@vercel/blob`) |
 | **Charts** | Recharts |
 | **Icons** | Lucide React |
 
@@ -60,6 +61,7 @@ ai-project/
 │   └── api/
 │       ├── analyze/route.ts      # Single-file analysis endpoint
 │       ├── analyze-zip/route.ts  # ZIP upload & multi-file analysis endpoint
+│       ├── blob-upload/route.ts  # Vercel Blob token route for large ZIP uploads
 │       └── save-scan/route.ts    # Save scan to Convex (for sharing + history)
 │
 ├── lib/
@@ -247,6 +249,7 @@ NEXT_PUBLIC_CONVEX_URL=<your convex URL>
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<clerk key>
 CLERK_SECRET_KEY=<clerk secret>
 GROQ_API_KEY=<groq key>
+BLOB_READ_WRITE_TOKEN=<vercel blob token>
 
 # 3. Push Convex schema
 npx convex dev --once
@@ -269,6 +272,7 @@ App runs at `http://localhost:3000`
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk dashboard → API keys |
 | `CLERK_SECRET_KEY` | Clerk dashboard → API keys |
 | `GROQ_API_KEY` | console.groq.com → API keys |
+| `BLOB_READ_WRITE_TOKEN` | Vercel dashboard → Storage → Blob token |
 
 ---
 

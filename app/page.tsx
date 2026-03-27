@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { upload } from '@vercel/blob/client';
 import { useUser, UserButton } from '@clerk/nextjs';
 import { Loader2, Zap, ShieldCheck, TrendingUp, ChevronRight, Upload, FileCode, BarChart2, LogIn } from 'lucide-react';
 import type { AnalysisResult } from '@/lib/analyzer/types';
@@ -23,6 +24,9 @@ const QUICK_LANGS = [
   { id: 'rb', label: 'Ruby' },
   { id: 'other', label: 'Other' },
 ];
+
+const DIRECT_UPLOAD_SAFE_BYTES = 4_400_000;
+const ZIP_HARD_LIMIT_BYTES = 25 * 1024 * 1024;
 
 const PLACEHOLDERS: Record<string, string> = {
   ts: `// TypeScript — Deep Analysis\nfunction processData(data: UserData) {\n  if (data) {\n    if (data.users) {\n      for (const user of data.users) {\n        if (user.active && user.role === 'admin') {\n          console.log('admin found');\n        }\n      }\n    }\n  }\n}`,
@@ -106,17 +110,41 @@ export default function HomePage() {
   // ── ZIP Upload ──
   async function handleZipUpload() {
     if (!zipFile) { setError('Please select a .zip file.'); return; }
+    if (zipFile.size > ZIP_HARD_LIMIT_BYTES) {
+      setError('ZIP is above 25MB app limit. Upload a smaller subset.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      const form = new FormData();
-      form.append('file', zipFile);
-      const res = await fetch('/api/analyze-zip', { method: 'POST', body: form });
+      let res: Response;
+
+      if (zipFile.size > DIRECT_UPLOAD_SAFE_BYTES) {
+        const blob = await upload(zipFile.name, zipFile, {
+          access: 'public',
+          handleUploadUrl: '/api/blob-upload',
+        });
+
+        res = await fetch('/api/analyze-zip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            fileName: zipFile.name,
+            fileSize: zipFile.size,
+          }),
+        });
+      } else {
+        const form = new FormData();
+        form.append('file', zipFile);
+        res = await fetch('/api/analyze-zip', { method: 'POST', body: form });
+      }
+
       let data: unknown = null;
       try { data = await res.json(); } catch { /* non-JSON error page (e.g., 413) */ }
       if (!res.ok) {
         if (res.status === 413) {
-          setError('ZIP is too large for deployed analysis. Keep it under 25MB or upload a smaller subset.');
+          setError('Upload rejected by hosting limit (413) before analysis started. Keep ZIP around 4.4MB on this deployment.');
         } else {
           const parsed = data as { error?: string } | null;
           setError(parsed?.error ?? 'Analysis failed. Try again.');
@@ -318,7 +346,7 @@ export default function HomePage() {
                 <>
                   <p className="dropzone-text">Drop your .zip here or click to browse</p>
                   <p className="dropzone-sub">
-                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · Max 25MB · Up to 50 files
+                    Supports .js .ts .tsx .py .java .go .cpp .cs .rs .rb · App limit 25MB (large ZIPs auto-upload via blob)
                   </p>
                 </>
               )}

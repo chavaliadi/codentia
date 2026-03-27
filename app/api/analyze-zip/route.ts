@@ -20,6 +20,107 @@ const QUICK_EXTENSIONS = new Set([
 const EXCLUDED_PATHS = ['node_modules', '.next', 'dist', 'build', '.git', 'vendor', '__pycache__'];
 const ZIP_SOFT_LIMIT_BYTES = 20 * 1024 * 1024;
 const ZIP_HARD_LIMIT_BYTES = 25 * 1024 * 1024; // App-level cap (hosting platform may enforce stricter limits)
+const TRUSTED_BLOB_HOST_SUFFIX = 'blob.vercel-storage.com';
+
+type ZipInput = {
+    filename: string;
+    size: number;
+    buffer: Buffer;
+};
+
+function isTrustedBlobUrl(urlString: string): boolean {
+    try {
+        const parsed = new URL(urlString);
+        return (
+            parsed.protocol === 'https:' &&
+            (parsed.hostname === TRUSTED_BLOB_HOST_SUFFIX || parsed.hostname.endsWith(`.${TRUSTED_BLOB_HOST_SUFFIX}`))
+        );
+    } catch {
+        return false;
+    }
+}
+
+async function parseZipInput(req: NextRequest): Promise<{ input: ZipInput | null; error: NextResponse | null }> {
+    const contentType = req.headers.get('content-type') ?? '';
+
+    if (contentType.includes('application/json')) {
+        const body = await req.json() as { blobUrl?: string; fileName?: string; fileSize?: number };
+        const blobUrl = body.blobUrl?.trim();
+        const fileName = (body.fileName ?? 'project.zip').trim();
+
+        if (!blobUrl) {
+            return {
+                input: null,
+                error: NextResponse.json({ error: 'Missing blob URL for ZIP analysis.' }, { status: 400 })
+            };
+        }
+
+        if (!isTrustedBlobUrl(blobUrl)) {
+            return {
+                input: null,
+                error: NextResponse.json({ error: 'Invalid ZIP source URL.' }, { status: 400 })
+            };
+        }
+
+        if (!fileName.toLowerCase().endsWith('.zip')) {
+            return {
+                input: null,
+                error: NextResponse.json({ error: 'Please upload a .zip file.' }, { status: 400 })
+            };
+        }
+
+        if (typeof body.fileSize === 'number' && body.fileSize > ZIP_HARD_LIMIT_BYTES) {
+            return {
+                input: null,
+                error: NextResponse.json({ error: 'ZIP file is too large for deployed analysis. Keep it under 25MB or upload a smaller subset.' }, { status: 400 })
+            };
+        }
+
+        const blobResponse = await fetch(blobUrl, { cache: 'no-store' });
+        if (!blobResponse.ok) {
+            return {
+                input: null,
+                error: NextResponse.json({ error: 'Could not download uploaded ZIP. Please try again.' }, { status: 422 })
+            };
+        }
+
+        const downloadedBuffer = Buffer.from(await blobResponse.arrayBuffer());
+        return {
+            input: {
+                filename: fileName,
+                size: downloadedBuffer.length,
+                buffer: downloadedBuffer,
+            },
+            error: null,
+        };
+    }
+
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+        return {
+            input: null,
+            error: NextResponse.json({ error: 'No file uploaded.' }, { status: 400 })
+        };
+    }
+
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+        return {
+            input: null,
+            error: NextResponse.json({ error: 'Please upload a .zip file.' }, { status: 400 })
+        };
+    }
+
+    return {
+        input: {
+            filename: file.name,
+            size: file.size,
+            buffer: Buffer.from(await file.arrayBuffer()),
+        },
+        error: null,
+    };
+}
 
 function shouldInclude(entryName: string): boolean {
     const lower = entryName.toLowerCase();
@@ -124,23 +225,21 @@ async function analyzeFile(
 
 export async function POST(req: NextRequest) {
     try {
-        const formData = await req.formData();
-        const file = formData.get('file') as File | null;
-
-        if (!file) {
-            return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+        const parsedInput = await parseZipInput(req);
+        if (parsedInput.error) {
+            return parsedInput.error;
         }
-
-        if (!file.name.endsWith('.zip')) {
-            return NextResponse.json({ error: 'Please upload a .zip file.' }, { status: 400 });
+        const input = parsedInput.input;
+        if (!input) {
+            return NextResponse.json({ error: 'Invalid ZIP payload.' }, { status: 400 });
         }
 
         // Soft warning range for performance
-        if (file.size > ZIP_SOFT_LIMIT_BYTES && file.size <= ZIP_HARD_LIMIT_BYTES) {
-            console.warn(`[analyze-zip] Large ZIP uploaded: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+        if (input.size > ZIP_SOFT_LIMIT_BYTES && input.size <= ZIP_HARD_LIMIT_BYTES) {
+            console.warn(`[analyze-zip] Large ZIP uploaded: ${(input.size / 1024 / 1024).toFixed(1)}MB`);
         }
 
-        if (file.size > ZIP_HARD_LIMIT_BYTES) {
+        if (input.size > ZIP_HARD_LIMIT_BYTES) {
             return NextResponse.json(
                 { error: 'ZIP file is too large for deployed analysis. Keep it under 25MB or upload a smaller subset.' },
                 { status: 400 }
@@ -148,8 +247,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Extract ZIP
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const zip = new AdmZip(buffer);
+        const zip = new AdmZip(input.buffer);
         const entries = zip.getEntries().filter(e =>
             !e.isDirectory && shouldInclude(e.entryName)
         );
