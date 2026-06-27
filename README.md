@@ -1,10 +1,10 @@
-# Codentia 🩺
+# Aurelin 🩺
 
 > **A multi-language project health analyzer with deterministic metrics, structured AI insight, and scan evolution tracking.**
 >
 > Unlike purely AI-based reviewers, every recommendation is grounded in measurable code metrics and structural analysis.
 >
-> Drop in a single file or an entire ZIP — Codentia scores your codebase, explains why, maps its import architecture, and tracks how it improves over time.
+> Drop in a single file or an entire ZIP — Aurelin scores your codebase, explains why, maps its import architecture, and tracks how it improves over time.
 
 ---
 
@@ -21,19 +21,19 @@
 
 ---
 
-## 📖 How Codentia Works
+## 📖 How Aurelin Works
 
-When you upload a single source file or an entire project ZIP, Codentia processes your code through six distinct analysis stages:
+When you upload a single source file or an entire project ZIP, Aurelin processes your code through six distinct analysis stages:
 
 ```
 [Upload] ➔ [Read & Decompress] ➔ [Parse Code] ➔ [Extract Metrics] ➔ [Graph & Analyze Cycles] ➔ [Calculate Scores] ➔ [AI Explanation] ➔ [Dashboard]
 ```
 
 ### Step 1 — Read the Project
-The uploaded ZIP archive is decompressed in memory using `adm-zip`. Codentia filters out non-source file paths (like macOS resource forks `._*`, `.git`, `node_modules`, and lock files). Supported source files are placed in an entry queue. To keep the server responsive, files are processed concurrently using a bounded promise pool.
+The uploaded ZIP archive is decompressed in memory using `adm-zip`. Aurelin filters out non-source file paths (like macOS resource forks `._*`, `.git`, `node_modules`, and lock files). Supported source files are placed in an entry queue. To keep the server responsive, files are processed concurrently using a bounded promise pool.
 
 ### Step 2 — Parse Every File
-For each collected file, Codentia chooses the appropriate parsing path based on the file extension:
+For each collected file, Aurelin chooses the appropriate parsing path based on the file extension:
 
 | Language | Mode | Parser |
 | :--- | :--- | :--- |
@@ -56,7 +56,7 @@ The syntax tree is walked to extract structural and maintainability metrics:
 - **Code Duplication**: Checking code blocks using a sliding window.
 
 ### Step 4 — Build Project Intelligence
-After individual file metrics are compiled, Codentia builds a project-level dependency graph where files represent nodes and imports represent directed edges. The analyzer:
+After individual file metrics are compiled, Aurelin builds a project-level dependency graph where files represent nodes and imports represent directed edges. The analyzer:
 - Resolves Next.js root aliases (`@/`) and relative import pathways.
 - Runs Tarjan's SCC algorithm on the directed graph to identify circular import loops.
 - Flag God files (excessive in/out degree coupling) and dead code modules (0 incoming references).
@@ -141,16 +141,16 @@ flowchart TD
 
 ## ⚙️ Detailed Analysis Engine
 
-Codentia operates in two analysis modes depending on the language:
+Aurelin operates in two analysis modes depending on the language:
 
 ### 1. 🔬 Deep Mode (JavaScript / TypeScript)
-For JavaScript and TypeScript files, Codentia performs deep static analysis:
+For JavaScript and TypeScript files, Aurelin performs deep static analysis:
 - **Babel AST Traversal**: Generates a full Abstract Syntax Tree.
 - **Nesting Metrics**: Recursively walks loop structures (`ForStatement`, `WhileStatement`, `DoWhileStatement`) and conditional statements (`IfStatement`, `SwitchStatement`) to measure nesting depth.
 - **Unused Import Identification**: Traverses `ImportSpecifier` bindings and checks if they are referenced anywhere in the module's scope, including JSX component declarations.
 
 ### 2. ⚡ Quick Mode (Python, Go, Java, C++, Rust, C#)
-For other backend languages, Codentia uses a hybrid WebAssembly parser:
+For other backend languages, Aurelin uses a hybrid WebAssembly parser:
 - **WASM Syntax Gates**: Dynamically loads compiled language grammars (`tree-sitter-python.wasm`, `tree-sitter-go.wasm`, etc.) via `web-tree-sitter` in a secure sandbox.
 - **Syntax Error Tracing**: Traverses the syntax tree for `ERROR` nodes and `isMissing()` tokens to capture exact syntax error messages, line numbers, and column offsets.
 - **Regex Metric Extraction**: Identifies function boundaries, parameters, nesting blocks, and line metrics using language-specific regular expressions when full ASTs are unavailable.
@@ -184,7 +184,7 @@ def process_data(a, b, c, d, e, f, g):  # ❌ Too many parameters (7)
                         print("Item found:", item)  # ❌ Deep nesting
 ```
 
-#### Codentia Scorecard:
+#### Aurelin Scorecard:
 - **Correctness Gate**: `Pass` (Valid Python syntax).
 - **Extracted Metrics**: Nesting Depth: `5`, Parameter Count: `7`.
 - **Deductions Applied**:
@@ -197,29 +197,29 @@ def process_data(a, b, c, d, e, f, g):  # ❌ Too many parameters (7)
 
 ## 🔬 Structural Analysis ("Why It Matters")
 
-Codentia incorporates two structural algorithms designed for high-performance codebase analysis:
+Aurelin incorporates two structural algorithms designed for high-performance codebase analysis:
 
 ### 1. Tarjan's Strongly Connected Components (SCC)
 - **What it is**: A graph algorithm that finds circular subgraphs in a single depth-first search (DFS) pass.
-- **Why it matters**: Circular dependencies (`A ➔ B ➔ A`) tightly couple modules, making them brittle, hard to test, and difficult to refactor. Codentia runs Tarjan's algorithm to identify these cycles in linear time **$O(V + E)$**, mapping loops on your dashboard without blocking the API handler.
+- **Why it matters**: Circular dependencies (`A ➔ B ➔ A`) tightly couple modules, making them brittle, hard to test, and difficult to refactor. Aurelin runs Tarjan's algorithm to identify these cycles in linear time **$O(V + E)$**, mapping loops on your dashboard without blocking the API handler.
 
 ### 2. Promise Pool Concurrency Limiter
 - **What it is**: A custom promise pool that limits active file analysis operations.
-- **Why it matters**: Analyzing large project uploads synchronous-style blocks the single-threaded Node.js event loop. Using unrestricted `Promise.all` can crash Vercel serverless containers due to CPU spikes or out-of-memory issues. Codentia uses a **concurrency limit of 6** to process files in parallel, keeping memory usage low and response times fast.
+- **Why it matters**: Analyzing large project uploads synchronous-style blocks the single-threaded Node.js event loop. Using unrestricted `Promise.all` can crash Vercel serverless containers due to CPU spikes or out-of-memory issues. Aurelin uses a **concurrency limit of 6** to process files in parallel, keeping memory usage low and response times fast.
 
 ---
 
 ## 🤖 AI Pipeline: Why Not Just Use AI?
 
-AI code reviewers often suffer from hallucinations and inconsistent metrics. Codentia solves this by using a hybrid **Metrics-First** architecture:
+AI code reviewers often suffer from hallucinations and inconsistent metrics. Aurelin solves this by using a hybrid **Metrics-First** architecture:
 
 ```
 [Traditional AI Reviewer] ➔ Raw Code ➔ Pure LLM Interpretation ➔ Opinion-Based Feedback (Unstable)
 
-[Codentia Pipeline]     ➔ Raw Code ➔ Static WASM AST ➔ Deterministic Evidence ➔ LLM Explanation (Stable)
+[Aurelin Pipeline]     ➔ Raw Code ➔ Static WASM AST ➔ Deterministic Evidence ➔ LLM Explanation (Stable)
 ```
 
-| Aspect | Traditional AI Reviewer | Codentia |
+| Aspect | Traditional AI Reviewer | Aurelin |
 | :--- | :--- | :--- |
 | **Consistency** | Low (scores change query-to-query) | High (scores are deterministic) |
 | **Refactoring Source** | Guessed by AI | Grounded in metrics (duplication, cyclomatic complexity) |
@@ -271,10 +271,10 @@ Open `http://localhost:3000` to view the platform.
 
 ## 📊 Self-Analysis Benchmark
 
-To validate the analyzer's accuracy, Codentia scanned its own `lib/` folder:
+To validate the analyzer's accuracy, Aurelin scanned its own `lib/` folder:
 - **97/100 — Excellent** overall maintainability score.
-- Correctly identified [metrics.ts](file:///Users/srinivasch/Documents/Projects/Codentia/ai-project/lib/analyzer/metrics.ts) as the weakest file (**83/100**) due to a highly nested 17-path cyclomatic complexity routine.
-- Correctly identified [aggregate.ts](file:///Users/srinivasch/Documents/Projects/Codentia/ai-project/lib/analyzer/aggregate.ts) as a God file candidate due to high import-coupling.
+- Correctly identified [metrics.ts](file:///Users/srinivasch/Documents/Projects/Aurelin/ai-project/lib/analyzer/metrics.ts) as the weakest file (**83/100**) due to a highly nested 17-path cyclomatic complexity routine.
+- Correctly identified [aggregate.ts](file:///Users/srinivasch/Documents/Projects/Aurelin/ai-project/lib/analyzer/aggregate.ts) as a God file candidate due to high import-coupling.
 
 ---
 

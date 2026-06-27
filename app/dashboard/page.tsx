@@ -132,7 +132,7 @@ export default function DashboardPage() {
             <nav className="cv-nav">
                 <div className="cv-nav-logo" onClick={() => router.push('/')}>
                     <span className="cv-logo-dot" />
-                    Codentia
+                    Aurelin
                 </div>
                 <div className="cv-nav-actions">
                     <button className="nav-back-btn" onClick={() => router.push('/')}>
@@ -322,7 +322,7 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <footer className="cv-footer">Codentia · Your code health over time</footer>
+            <footer className="cv-footer">Aurelin · Your code health over time</footer>
         </main>
     );
 }

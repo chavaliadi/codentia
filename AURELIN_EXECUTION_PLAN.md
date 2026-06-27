@@ -1,7 +1,7 @@
-# Codentia Execution Plan (Health + Correctness)
+# Aurelin Execution Plan (Health + Correctness)
 
 ## Objective
-Evolve Codentia from a strong maintainability analyzer into a maintainability + basic correctness analyzer, without overpromising runtime bug detection.
+Evolve Aurelin from a strong maintainability analyzer into a maintainability + basic correctness analyzer, without overpromising runtime bug detection.
 
 ## Scope Principles
 - Keep current "code health" strengths intact.

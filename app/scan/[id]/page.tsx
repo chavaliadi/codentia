@@ -66,7 +66,7 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                     This scan report was not found or may have been removed.
                 </p>
                 <button className="nav-back-btn" style={{ marginTop: 16 }} onClick={() => router.push('/')}>
-                    <ArrowLeft size={14} /> Back to Codentia
+                    <ArrowLeft size={14} /> Back to Aurelin
                 </button>
             </div>
         );
@@ -118,13 +118,13 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
             <nav className="cv-nav">
                 <div className="cv-nav-logo" onClick={() => router.push('/')}>
                     <span className="cv-logo-dot" />
-                    Codentia
+                    Aurelin
                 </div>
                 <div className="cv-nav-actions">
                     <span className="cv-nav-badge">Shared Report</span>
                     <ThemeToggle />
                     <button className="nav-back-btn" onClick={() => router.push('/')}>
-                        Try Codentia Free →
+                        Try Aurelin Free →
                     </button>
                 </div>
             </nav>
@@ -392,12 +392,12 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                     Want to scan your own project?
                 </p>
                 <button className="analyze-btn" onClick={() => router.push('/')}>
-                    Try Codentia Free — No Sign Up Required
+                    Try Aurelin Free — No Sign Up Required
                 </button>
             </div>
 
             <footer className="cv-footer">
-                Codentia · AI-powered code health analysis
+                Aurelin · AI-powered code health analysis
             </footer>
         </main>
     );

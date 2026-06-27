@@ -177,7 +177,7 @@ export default function HomePage() {
       <nav className="cv-nav">
         <div className="cv-nav-logo" onClick={() => router.push('/')}>
           <span className="cv-logo-dot" />
-          Codentia
+          Aurelin
         </div>
         <div className="cv-nav-actions">
           <span className="cv-nav-badge">Beta</span>
@@ -391,7 +391,7 @@ export default function HomePage() {
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
       <footer className="cv-footer">
-        Codentia · Deep analysis for JS/TS · Quick scan for any stack
+        Aurelin · Deep analysis for JS/TS · Quick scan for any stack
       </footer>
     </main>
   );
