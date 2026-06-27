@@ -8,8 +8,8 @@ import Provider from "./provider";
 const outfit = Outfit({ subsets: ['latin'], weight: ['400', '700'] });
 
 export const metadata: Metadata = {
-  title: "CodeVitals",
-  description: "An AI-powered project management tool.",
+  title: "Codentia",
+  description: "An explainable code intelligence platform combining deterministic static analysis with AI-guided reasoning.",
 };
 
 export default function RootLayout({

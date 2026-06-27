@@ -104,7 +104,7 @@ export default function AnalyzePage() {
             <nav className="cv-nav">
                 <div className="cv-nav-logo" onClick={() => router.push('/')}>
                     <span className="cv-logo-dot" />
-                    CodeVitals
+                    Codentia
                 </div>
                 <div className="cv-nav-actions">
                     <button className="nav-back-btn" onClick={() => router.push('/')}>
@@ -355,7 +355,7 @@ export default function AnalyzePage() {
             </div>
 
             <footer className="cv-footer">
-                CodeVitals · AI-powered code health analysis
+                Codentia · AI-powered code health analysis
             </footer>
         </main>
     );

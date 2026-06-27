@@ -1,10 +1,10 @@
-# CodeVitals — Roadmap (FROZEN — build, don't re-plan)
+# Codentia — Roadmap (FROZEN — build, don't re-plan)
 
 **Positioning:** *Explainable Code Intelligence.* Not just scores — evidence, reasoning, and
-prioritized improvements. CodeVitals isn't "another AI analyzer," it's AI decision support:
+prioritized improvements. Codentia isn't "another AI analyzer," it's AI decision support:
 Explainable Scoring → Confidence → Evidence → Root Cause → Sprint Plan.
 
-**Suggested README opening line:** *"CodeVitals is an explainable code intelligence platform
+**Suggested README opening line:** *"Codentia is an explainable code intelligence platform
 that combines deterministic static analysis with AI-guided reasoning to help developers
 understand not just what is wrong with their code, but why it matters, how confident the
 analysis is, and what to fix first."*

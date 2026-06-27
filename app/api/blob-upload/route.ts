@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
                     ],
                     maximumSizeInBytes: ZIP_HARD_LIMIT_BYTES,
                     addRandomSuffix: true,
-                    tokenPayload: JSON.stringify({ source: 'codevitals-zip-upload' }),
+                    tokenPayload: JSON.stringify({ source: 'codentia-zip-upload' }),
                 };
             },
             onUploadCompleted: async () => {

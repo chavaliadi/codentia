@@ -1,7 +1,7 @@
-# CodeVitals Execution Plan (Health + Correctness)
+# Codentia Execution Plan (Health + Correctness)
 
 ## Objective
-Evolve CodeVitals from a strong maintainability analyzer into a maintainability + basic correctness analyzer, without overpromising runtime bug detection.
+Evolve Codentia from a strong maintainability analyzer into a maintainability + basic correctness analyzer, without overpromising runtime bug detection.
 
 ## Scope Principles
 - Keep current "code health" strengths intact.

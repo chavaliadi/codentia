@@ -11,7 +11,7 @@ export default function Page() {
       background: 'linear-gradient(135deg, #0a0a0f 0%, #0f0f1a 50%, #0a0a0f 100%)',
       padding: '24px',
     }}>
-      {/* CodeVitals logo above the card */}
+      {/* Codentia logo above the card */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -29,7 +29,7 @@ export default function Page() {
           display: 'inline-block',
           boxShadow: '0 0 10px #7c5cfc80',
         }} />
-        CodeVitals
+        Codentia
       </div>
       <SignIn />
     </div>

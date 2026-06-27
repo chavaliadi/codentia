@@ -203,7 +203,7 @@ export default function ProjectPage() {
             <nav className="cv-nav">
                 <div className="cv-nav-logo" onClick={() => router.push('/')}>
                     <span className="cv-logo-dot" />
-                    CodeVitals
+                    Codentia
                 </div>
                 <div className="cv-nav-actions">
                     {user && (
@@ -556,7 +556,7 @@ export default function ProjectPage() {
                 </button>
             </div>
 
-            <footer className="cv-footer">CodeVitals · AI-powered code health analysis</footer>
+            <footer className="cv-footer">Codentia · AI-powered code health analysis</footer>
 
             {/* ── Share Modal ── */}
             {showShareModal && (
