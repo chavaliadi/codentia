@@ -185,6 +185,10 @@ function getSyntaxLanguageId(filename: string): string {
     const ext = filename.toLowerCase().split('.').pop() ?? '';
     if (ext === 'py') return 'py';
     if (ext === 'go') return 'go';
+    if (ext === 'java') return 'java';
+    if (ext === 'cpp' || ext === 'cc' || ext === 'cxx') return 'cpp';
+    if (ext === 'rs') return 'rust';
+    if (ext === 'cs') return 'c#';
     return 'unknown';
 }
 

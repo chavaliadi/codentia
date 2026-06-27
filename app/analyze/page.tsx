@@ -49,7 +49,8 @@ export default function AnalyzePage() {
     const mediumCount = result.issues.filter((i) => i.severity === 'medium').length;
     const lowCount = result.issues.filter((i) => i.severity === 'low').length;
     const correctness = result.correctness ?? { status: 'unknown' as const, syntaxErrors: [] };
-    const hasQuickSyntaxCheck = language === 'py' || language === 'go';
+    const WASM_SUPPORTED = new Set(['py', 'python', 'go', 'golang', 'java', 'cpp', 'rust', 'c#', 'cs']);
+    const hasQuickSyntaxCheck = WASM_SUPPORTED.has(language.toLowerCase());
     const correctnessLabel =
         correctness.status === 'pass' ? 'Pass' :
             correctness.status === 'fail' ? 'Fail' :
@@ -151,7 +152,7 @@ export default function AnalyzePage() {
                         <span className="correctness-subtext">
                             {languageMode === 'deep'
                                 ? 'Syntax-aware check'
-                                : (hasQuickSyntaxCheck ? 'Quick mode syntax check (Python/Go)' : 'Quick mode syntax check not available yet')}
+                                : (hasQuickSyntaxCheck ? 'Quick mode syntax check (WASM)' : 'Quick mode syntax check not available for this language')}
                         </span>
                     </div>
                     {correctness.status === 'fail' && correctness.syntaxErrors.length > 0 && (
