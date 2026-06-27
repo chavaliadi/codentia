@@ -24,6 +24,9 @@ export const saveScan = mutation({
         aiSummary: v.string(),
         visibility: v.string(),
         fileResults: v.optional(v.string()),
+        architectureInsights: v.optional(v.string()),
+        rootCauseClusters: v.optional(v.string()),
+        topFixes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         return await ctx.db.insert("ScansTable", {
@@ -111,6 +114,9 @@ export const getScanById = query({
             languageMode: results.languageMode,
             visibility: results.visibility,
             createdAt: results.createdAt,
+            architectureInsights: results.architectureInsights,
+            rootCauseClusters: results.rootCauseClusters,
+            topFixes: results.topFixes,
         };
 
         // Only include file results if visibility is "full"

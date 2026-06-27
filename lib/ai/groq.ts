@@ -214,4 +214,101 @@ export class GroqProvider implements AIProvider {
             return null;
         }
     }
+
+    async explainProject(
+        metrics: any,
+        score: number,
+        clusters: { folder: string; issueCount: number; categories: string[]; affectedFiles: string[] }[],
+        cycles: string[][],
+        godFiles: string[]
+    ): Promise<{
+        aiExplanation: string;
+        clusters: { folder: string; architecturalTip: string }[];
+        topFixes: { rank: number; title: string; impact: 'High' | 'Medium' | 'Low'; description: string }[];
+    }> {
+        const fallback = {
+            aiExplanation: `The codebase scores ${score}/100. Positives include structured file formatting, but there is an opportunity to improve overall complexity and circular dependencies.`,
+            clusters: clusters.map(c => ({
+                folder: c.folder,
+                architecturalTip: `Refactor functions in ${c.folder} to improve layout nesting and readability.`
+            })),
+            topFixes: [
+                { rank: 1, title: 'Break Circular Dependencies', impact: 'High' as const, description: 'Untangle cyclical dependency references.' }
+            ]
+        };
+
+        try {
+            const prompt = `You are a Principal Software Architect reviewing a code repository.
+Your task is to analyze the structural complexity and provide a cohesive, top-tier engineering strategy for refactoring.
+
+PROJECT METRICS:
+- Overall Score: ${score}/100
+- Total Lines: ${metrics.totalLines}
+- Total Functions: ${metrics.totalFunctions}
+- Avg Cyclomatic Complexity: ${metrics.avgCyclomaticComplexity} (max: ${metrics.maxCyclomaticComplexity})
+- Avg Function Length: ${metrics.avgFunctionLength}
+- Max Nesting Depth: ${metrics.maxNestingDepth}
+- Duplicate Logic: ${metrics.duplicationPercentage}%
+- Unused Imports: ${metrics.unusedImportCount}
+
+STRUCTURAL WARNINGS:
+${cycles.length > 0 ? `CIRCULAR DEPENDENCY LOOPS:\n${cycles.map(c => `- Cycle: ${c.join(' -> ')}`).join('\n')}` : 'No circular dependency loops.'}
+${godFiles.length > 0 ? `GOD FILES:\n${godFiles.map(g => `- God file: "${g}"`).join('\n')}` : 'No god files.'}
+
+ROOT CAUSE CLUSTERS:
+${clusters.length > 0 ? clusters.map(c => `- Folder: "${c.folder}" has ${c.issueCount} issues (${c.categories.join(', ')}) affecting ${c.affectedFiles.join(', ')}`).join('\n') : 'No distinct issue clusters.'}
+
+Respond ONLY in valid JSON. Do NOT include markdown blocks. Do NOT wrap in \`\`\`json.
+Your response MUST fit this exact JSON format:
+{
+  "aiExplanation": "<3-4 sentences summarizing the project health, celebrating strengths, and calmly suggesting the single most critical structural focus. Reference metrics to ground your analysis. Use supportive, senior-engineer tone.>",
+  "clusters": [
+    ${clusters.map(c => `{ "folder": "${c.folder}", "architecturalTip": "<A friendly, constructive 1-sentence tip on how to refactor this specific folder. E.g. \\"Consolidate common validation logic into a shared middleware.\\">" }`).join(',\n    ')}
+  ],
+  "topFixes": [
+    {
+      "rank": 1,
+      "title": "<Rank 1 fix title, e.g. Break Circular Imports / Simplify UI Components>",
+      "impact": "High",
+      "description": "<1-2 sentences explaining what to do, which files are affected, and why it is the most critical fix right now.>"
+    },
+    {
+      "rank": 2,
+      "title": "<Rank 2 fix title>",
+      "impact": "Medium",
+      "description": "<1-2 sentences description>"
+    },
+    {
+      "rank": 3,
+      "title": "<Rank 3 fix title, if applicable>",
+      "impact": "Low",
+      "description": "<1-2 sentences description>"
+    }
+  ]
+}`;
+
+            const completion = await groq.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                temperature: 0.2,
+                max_tokens: 800,
+                messages: [
+                    { role: 'system', content: 'Respond ONLY in valid JSON. No markdown. No extra text.' },
+                    { role: 'user', content: prompt }
+                ]
+            });
+
+            const raw = completion.choices[0]?.message?.content ?? '';
+            const cleaned = raw.replace(/^```[a-z]*\n?/i, '').replace(/```$/i, '').trim();
+            const parsed = JSON.parse(cleaned);
+
+            return {
+                aiExplanation: parsed.aiExplanation || fallback.aiExplanation,
+                clusters: parsed.clusters || fallback.clusters,
+                topFixes: parsed.topFixes || fallback.topFixes
+            };
+        } catch (err) {
+            console.error('Groq explainProject error:', err);
+            return fallback;
+        }
+    }
 }

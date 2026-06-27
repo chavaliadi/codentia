@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 import { ArrowLeft, RefreshCw, TrendingUp, ChevronUp, ChevronDown, Minus, Share2, X, Check, BarChart2 } from 'lucide-react';
-import type { ProjectResult } from '@/lib/analyzer/aggregate';
+import type { ProjectResult, FileResult } from '@/lib/analyzer/types';
 import ScoreGauge from '@/components/analyzer/ScoreGauge';
 import AIInsight from '@/components/analyzer/AIInsight';
 import ThemeToggle from '@/components/ThemeToggle';
+import Mermaid from '@/components/analyzer/Mermaid';
 
 export default function ProjectPage() {
     const [project, setProject] = useState<ProjectResult | null>(null);
@@ -80,23 +81,23 @@ export default function ProjectPage() {
     const fileResults = project.fileResults;
     const avg = (arr: number[]) => arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10;
 
-    const complexityPenalty = Math.round(avg(fileResults.map(f => {
+    const complexityPenalty = Math.round(avg(fileResults.map((f: FileResult) => {
         const sub = Math.max(0, Math.min(100, Math.round(100 - (f.metrics.avgCyclomaticComplexity - 1) * 8)));
         return Math.round((100 - sub) * 0.30);
     })));
-    const lengthPenalty = Math.round(avg(fileResults.map(f => {
+    const lengthPenalty = Math.round(avg(fileResults.map((f: FileResult) => {
         const sub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, f.metrics.avgFunctionLength - 20) * 1.2)));
         return Math.round((100 - sub) * 0.25);
     })));
-    const nestingPenalty = Math.round(avg(fileResults.map(f => {
+    const nestingPenalty = Math.round(avg(fileResults.map((f: FileResult) => {
         const sub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, f.metrics.maxNestingDepth - 2) * 15)));
         return Math.round((100 - sub) * 0.20);
     })));
-    const duplicationPenalty = Math.round(avg(fileResults.map(f => {
+    const duplicationPenalty = Math.round(avg(fileResults.map((f: FileResult) => {
         const sub = Math.max(0, Math.min(100, Math.round(100 - f.metrics.duplicationPercentage * 2)));
         return Math.round((100 - sub) * 0.15);
     })));
-    const unusedPenalty = Math.round(avg(fileResults.map(f => {
+    const unusedPenalty = Math.round(avg(fileResults.map((f: FileResult) => {
         const sub = Math.max(0, Math.min(100, Math.round(100 - f.metrics.unusedImportCount * 10)));
         return Math.round((100 - sub) * 0.10);
     })));
@@ -260,6 +261,30 @@ export default function ProjectPage() {
                 </div>
             </div>
 
+            {/* ── Ranked Top Fixes Landing Panel (Stage 2) ── */}
+            {project.topFixes && project.topFixes.length > 0 && (
+                <div className="glass-card top-fixes-section">
+                    <h2 className="card-title">🎯 Prioritized Refactoring Plan</h2>
+                    <p className="section-subtitle">Ranked issues and recommended steps generated dynamically by structural models.</p>
+                    <div className="top-fixes-list">
+                        {project.topFixes.map((fix: any) => (
+                            <div key={fix.rank} className={`top-fix-item impact-${fix.impact.toLowerCase()}`}>
+                                <div className="top-fix-rank">#{fix.rank}</div>
+                                <div className="top-fix-body">
+                                    <div className="top-fix-header">
+                                        <h3 className="top-fix-title">{fix.title}</h3>
+                                        <span className={`impact-badge ${fix.impact.toLowerCase()}`}>
+                                            {fix.impact} Impact
+                                        </span>
+                                    </div>
+                                    <p className="top-fix-desc">{fix.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* ── Score + AI ── */}
             <div className="top-row">
                 <div className="glass-card score-card">
@@ -381,7 +406,7 @@ export default function ProjectPage() {
                         Here are the areas that would give you the biggest improvement
                     </h2>
                     <div className="improvements-list">
-                        {project.topImprovements.map((imp, i) => (
+                        {project.topImprovements.map((imp: any, i: number) => (
                             <div key={i} className="improvement-item">
                                 <div className="improvement-rank">#{i + 1}</div>
                                 <div className="improvement-body">
@@ -390,6 +415,94 @@ export default function ProjectPage() {
                                     <div className="improvement-meta">
                                         <span className="improvement-files">{imp.affectedFiles} file{imp.affectedFiles > 1 ? 's' : ''} affected</span>
                                         <span className="improvement-gain">~+{imp.potentialGain} pts potential</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Architecture Insights (Stage 2) ── */}
+            {project.architectureInsights && (
+                <div className="architecture-grid">
+                    <div className="glass-card mermaid-card">
+                        <h2 className="card-title">🔌 Module Dependency Graph</h2>
+                        <p className="section-subtitle">Visualizing import couplings. Highlighted cycles and god modules are included.</p>
+                        <Mermaid chart={project.architectureInsights.mermaidGraph} />
+                    </div>
+
+                    <div className="glass-card insights-card">
+                        <h2 className="card-title">🔬 Structural Findings</h2>
+                        
+                        {project.architectureInsights.cycles && project.architectureInsights.cycles.length > 0 ? (
+                            <div className="insight-block danger">
+                                <h3 className="insight-block-title">🔄 Circular Dependencies ({project.architectureInsights.cycles.length})</h3>
+                                <p className="insight-block-desc">Cyclical imports make code brittle and hard to test. Consider breaking these loops:</p>
+                                <ul className="cycles-list">
+                                    {project.architectureInsights.cycles.map((cycle: string[], idx: number) => (
+                                        <li key={idx} className="cycle-item">
+                                            {cycle.map((c: string) => c.split('/').pop()).join(' ➔ ')}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="insight-block success">
+                                <h3 className="insight-block-title">✓ No Circular Dependencies</h3>
+                                <p className="insight-block-desc">All module imports flow in a clean, acyclic direction.</p>
+                            </div>
+                        )}
+
+                        {project.architectureInsights.godFiles && project.architectureInsights.godFiles.length > 0 && (
+                            <div className="insight-block warning">
+                                <h3 className="insight-block-title">⚖ God Files ({project.architectureInsights.godFiles.length})</h3>
+                                <p className="insight-block-desc">Modules with very high complexity and coupling that act as central hubs:</p>
+                                <ul className="god-files-list">
+                                    {project.architectureInsights.godFiles.map((file: string, idx: number) => (
+                                        <li key={idx} className="god-file-item">
+                                            <strong>{file.split('/').pop()}</strong> <span className="text-muted">({file})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {project.architectureInsights.deadCode && project.architectureInsights.deadCode.length > 0 && (
+                            <div className="insight-block info">
+                                <h3 className="insight-block-title">👻 Unreferenced Files ({project.architectureInsights.deadCode.length})</h3>
+                                <p className="insight-block-desc">Files not imported by any other project module (excluding app entry points):</p>
+                                <ul className="dead-code-list">
+                                    {project.architectureInsights.deadCode.map((file: string, idx: number) => (
+                                        <li key={idx} className="dead-code-item">
+                                            <strong>{file.split('/').pop()}</strong> <span className="text-muted">({file})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {project.rootCauseClusters && project.rootCauseClusters.length > 0 && (
+                <div className="glass-card clusters-section">
+                    <h2 className="card-title">📁 Directory Issue Clusters</h2>
+                    <p className="section-subtitle">Groups of related issues identified within specific subdirectories.</p>
+                    <div className="clusters-grid">
+                        {project.rootCauseClusters.map((cluster: any, idx: number) => (
+                            <div key={idx} className="cluster-card-item">
+                                <div className="cluster-header">
+                                    <h3 className="cluster-folder">{cluster.folder}</h3>
+                                    <span className="cluster-badge">{cluster.issueCount} issue{cluster.issueCount > 1 ? 's' : ''}</span>
+                                </div>
+                                <div className="cluster-details">
+                                    <p className="cluster-tip">💡 {cluster.architecturalTip || 'Simplify code structure inside this directory.'}</p>
+                                    <div className="cluster-meta-info">
+                                        <strong>Affected files:</strong> {cluster.affectedFiles.join(', ')}
+                                    </div>
+                                    <div className="cluster-meta-info">
+                                        <strong>Refined categories:</strong> {cluster.categories.map((c: string) => c.replace(/_/g, ' ')).join(', ')}
                                     </div>
                                 </div>
                             </div>
@@ -409,7 +522,7 @@ export default function ProjectPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {project.fileResults.map((file, i) => (
+                            {project.fileResults.map((file: FileResult, i: number) => (
                                 <tr key={i} className={(file.correctnessStatus === 'fail' || file.score < 60) ? 'row-warn' : ''}>
                                     <td className="file-name">{file.filename}</td>
                                     <td className="file-score">

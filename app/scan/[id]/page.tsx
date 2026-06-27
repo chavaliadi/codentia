@@ -7,8 +7,9 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
 import ScoreGauge from '@/components/analyzer/ScoreGauge';
 import ThemeToggle from '@/components/ThemeToggle';
+import Mermaid from '@/components/analyzer/Mermaid';
 import type { Grade } from '@/lib/analyzer/types';
-import type { FileResult } from '@/lib/analyzer/aggregate';
+import type { FileResult } from '@/lib/analyzer/types';
 
 type ScanData = {
     scanId: string;
@@ -22,9 +23,12 @@ type ScanData = {
     topImprovements: string;
     aiSummary: string;
     languageMode: string;
-    visibility: string;
+    visibility: 'summary' | 'full';
     createdAt: number;
     fileResults?: string;
+    architectureInsights?: string;
+    rootCauseClusters?: string;
+    topFixes?: string;
 };
 
 function barColor(v: number) {
@@ -70,6 +74,9 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
 
     const topImprovements = JSON.parse(scan.topImprovements ?? '[]');
     const fileResults: FileResult[] = scan.fileResults ? JSON.parse(scan.fileResults) : [];
+    const architectureInsights = scan.architectureInsights ? JSON.parse(scan.architectureInsights) : null;
+    const rootCauseClusters = scan.rootCauseClusters ? JSON.parse(scan.rootCauseClusters) : [];
+    const topFixes = scan.topFixes ? JSON.parse(scan.topFixes) : [];
     const scanDate = new Date(scan.createdAt).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric'
     });
@@ -137,6 +144,30 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                     <span className="pill pill-clean">{scan.languageMode} mode</span>
                 </div>
             </div>
+
+            {/* Prioritized Refactoring Plan (only if visibility === 'full') */}
+            {scan.visibility === 'full' && topFixes && topFixes.length > 0 && (
+                <div className="glass-card top-fixes-section">
+                    <h2 className="card-title">🎯 Prioritized Refactoring Plan</h2>
+                    <p className="section-subtitle">Ranked issues and recommended steps generated dynamically by structural models.</p>
+                    <div className="top-fixes-list">
+                        {topFixes.map((fix: { rank: number; title: string; impact: string; description: string }) => (
+                            <div key={fix.rank} className={`top-fix-item impact-${fix.impact.toLowerCase()}`}>
+                                <div className="top-fix-rank">#{fix.rank}</div>
+                                <div className="top-fix-body">
+                                    <div className="top-fix-header">
+                                        <h3 className="top-fix-title">{fix.title}</h3>
+                                        <span className={`impact-badge ${fix.impact.toLowerCase()}`}>
+                                            {fix.impact} Impact
+                                        </span>
+                                    </div>
+                                    <p className="top-fix-desc">{fix.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Score + Categories */}
             <div className="top-row">
@@ -215,6 +246,95 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                                     <div className="improvement-meta">
                                         <span className="improvement-files">{imp.affectedFiles} file{imp.affectedFiles > 1 ? 's' : ''} affected</span>
                                         <span className="improvement-gain">~+{imp.potentialGain} pts potential</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Architecture Insights (only if visibility === 'full') */}
+            {scan.visibility === 'full' && architectureInsights && (
+                <div className="architecture-grid">
+                    <div className="glass-card mermaid-card">
+                        <h2 className="card-title">🔌 Module Dependency Graph</h2>
+                        <p className="section-subtitle">Visualizing import couplings. Highlighted cycles and god modules are included.</p>
+                        <Mermaid chart={architectureInsights.mermaidGraph} />
+                    </div>
+
+                    <div className="glass-card insights-card">
+                        <h2 className="card-title">🔬 Structural Findings</h2>
+                        
+                        {architectureInsights.cycles && architectureInsights.cycles.length > 0 ? (
+                            <div className="insight-block danger">
+                                <h3 className="insight-block-title">🔄 Circular Dependencies ({architectureInsights.cycles.length})</h3>
+                                <p className="insight-block-desc">Cyclical imports make code brittle and hard to test. Consider breaking these loops:</p>
+                                <ul className="cycles-list">
+                                    {architectureInsights.cycles.map((cycle: string[], idx: number) => (
+                                        <li key={idx} className="cycle-item">
+                                            {cycle.map((c) => c.split('/').pop()).join(' ➔ ')}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <div className="insight-block success">
+                                <h3 className="insight-block-title">✓ No Circular Dependencies</h3>
+                                <p className="insight-block-desc">All module imports flow in a clean, acyclic direction.</p>
+                            </div>
+                        )}
+
+                        {architectureInsights.godFiles && architectureInsights.godFiles.length > 0 && (
+                            <div className="insight-block warning">
+                                <h3 className="insight-block-title">⚖ God Files ({architectureInsights.godFiles.length})</h3>
+                                <p className="insight-block-desc">Modules with very high complexity and coupling that act as central hubs:</p>
+                                <ul className="god-files-list">
+                                    {architectureInsights.godFiles.map((file: string, idx: number) => (
+                                        <li key={idx} className="god-file-item">
+                                            <strong>{file.split('/').pop()}</strong> <span className="text-muted">({file})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {architectureInsights.deadCode && architectureInsights.deadCode.length > 0 && (
+                            <div className="insight-block info">
+                                <h3 className="insight-block-title">👻 Unreferenced Files ({architectureInsights.deadCode.length})</h3>
+                                <p className="insight-block-desc">Files not imported by any other project module (excluding app entry points):</p>
+                                <ul className="dead-code-list">
+                                    {architectureInsights.deadCode.map((file: string, idx: number) => (
+                                        <li key={idx} className="dead-code-item">
+                                            <strong>{file.split('/').pop()}</strong> <span className="text-muted">({file})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Root Cause Clusters (only if visibility === 'full') */}
+            {scan.visibility === 'full' && rootCauseClusters && rootCauseClusters.length > 0 && (
+                <div className="glass-card clusters-section">
+                    <h2 className="card-title">📁 Directory Issue Clusters</h2>
+                    <p className="section-subtitle">Groups of related issues identified within specific subdirectories.</p>
+                    <div className="clusters-grid">
+                        {rootCauseClusters.map((cluster: { folder: string; issueCount: number; architecturalTip: string; affectedFiles: string[]; categories: string[] }, idx: number) => (
+                            <div key={idx} className="cluster-card-item">
+                                <div className="cluster-header">
+                                    <h3 className="cluster-folder">{cluster.folder}</h3>
+                                    <span className="cluster-badge">{cluster.issueCount} issue{cluster.issueCount > 1 ? 's' : ''}</span>
+                                </div>
+                                <div className="cluster-details">
+                                    <p className="cluster-tip">💡 {cluster.architecturalTip || 'Simplify code structure inside this directory.'}</p>
+                                    <div className="cluster-meta-info">
+                                        <strong>Affected files:</strong> {cluster.affectedFiles.join(', ')}
+                                    </div>
+                                    <div className="cluster-meta-info">
+                                        <strong>Refined categories:</strong> {cluster.categories.map(c => c.replace(/_/g, ' ')).join(', ')}
                                     </div>
                                 </div>
                             </div>

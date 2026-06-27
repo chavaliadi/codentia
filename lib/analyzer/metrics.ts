@@ -277,15 +277,22 @@ function detectUnusedImports(ast: t.File): string[] {
 export interface RawMetrics {
     summary: MetricsSummary;
     issues: Issue[];
+    imports: string[];
 }
 
 export function computeMetrics(ast: t.File, code: string): RawMetrics {
     const issues: Issue[] = [];
     const functionComplexities: number[] = [];
     const functionLengths: number[] = [];
+    const imports: string[] = [];
 
     // ── function-level metrics ──
     traverse(ast, {
+        ImportDeclaration(path: any) {
+            if (path.node.source?.value) {
+                imports.push(path.node.source.value);
+            }
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'FunctionDeclaration|FunctionExpression|ArrowFunctionExpression'(path: any) {
             const node = path.node as t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
@@ -484,5 +491,5 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
         totalLines: code.split('\n').length,
     };
 
-    return { summary, issues };
+    return { summary, issues, imports };
 }

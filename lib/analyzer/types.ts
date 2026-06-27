@@ -80,6 +80,28 @@ export interface CorrectnessResult {
   lintErrors?: LintErrorDetail[];
 }
 
+export interface ArchitectureInsights {
+  mermaidGraph: string;
+  cycles: string[][];
+  deadCode: string[];
+  godFiles: string[];
+}
+
+export interface RootCauseCluster {
+  folder: string;
+  issueCount: number;
+  affectedFiles: string[];
+  categories: string[];
+  architecturalTip: string;
+}
+
+export interface TopFix {
+  rank: number;
+  title: string;
+  impact: 'High' | 'Medium' | 'Low';
+  description: string;
+}
+
 export interface AnalysisResult {
   score: number;
   grade: Grade;
@@ -89,5 +111,55 @@ export interface AnalysisResult {
   aiExplanation: string;
   estimatedImprovement?: number; // pts if quick wins addressed
   categoryScores?: CategoryScores;
+  imports?: string[];
+}
+
+export interface FileResult {
+  filename: string;
+  filePath: string;
+  score: number;
+  grade: Grade;
+  correctnessStatus?: 'pass' | 'fail' | 'unknown';
+  syntaxErrorCount?: number;
+  topIssue: string | null;
+  issueCount: number;
+  metrics: MetricsSummary;
+  mode: 'deep' | 'quick';
+  imports?: string[];
+}
+
+export type CorrectnessConfidenceBand = 'high' | 'medium' | 'low' | 'unknown';
+
+export interface CorrectnessSummary {
+  filesFailedSyntax: number;
+  filesUnchecked: number;
+  filesChecked: number;
+  passFiles: number;
+  failFiles: number;
+  confidenceBand: CorrectnessConfidenceBand;
+}
+
+export interface TopImprovement {
+  area: string;
+  description: string;
+  affectedFiles: number;
+  potentialGain: number;
+}
+
+export interface ProjectResult {
+  projectScore: number;
+  projectGrade: Grade;
+  summary: string;
+  fileResults: FileResult[];
+  topImprovements: TopImprovement[];
+  categoryScores: CategoryScores;
+  correctnessSummary: CorrectnessSummary;
+  totalFiles: number;
+  totalLines: number;
+  totalFunctions: number;
+  aiExplanation: string;
+  architectureInsights?: ArchitectureInsights;
+  rootCauseClusters?: RootCauseCluster[];
+  topFixes?: TopFix[];
 }
 

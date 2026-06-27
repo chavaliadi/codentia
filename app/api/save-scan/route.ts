@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveScanToConvex } from '@/lib/db/saveScan';
-import type { FileResult } from '@/lib/analyzer/aggregate';
+import type { FileResult } from '@/lib/analyzer/types';
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,6 +19,9 @@ export async function POST(req: NextRequest) {
             visibility,
             fileResults,
             languageMode,
+            architectureInsights,
+            rootCauseClusters,
+            topFixes,
         } = body;
 
         if (!projectScore || !categoryScores) {
@@ -41,6 +44,15 @@ export async function POST(req: NextRequest) {
             aiExplanation: aiExplanation ?? '',
             visibility: visibility ?? 'summary',
             fileResults: fileResults as FileResult[] | undefined,
+            architectureInsights: typeof architectureInsights === 'string'
+                ? architectureInsights
+                : (architectureInsights ? JSON.stringify(architectureInsights) : undefined),
+            rootCauseClusters: typeof rootCauseClusters === 'string'
+                ? rootCauseClusters
+                : (rootCauseClusters ? JSON.stringify(rootCauseClusters) : undefined),
+            topFixes: typeof topFixes === 'string'
+                ? topFixes
+                : (topFixes ? JSON.stringify(topFixes) : undefined),
         });
 
         return NextResponse.json({ scanId });

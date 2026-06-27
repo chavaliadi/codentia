@@ -34,6 +34,46 @@ const FUNCTION_PATTERNS: RegExp[] = [
 
 const COMPLEXITY_KEYWORDS = /\b(if|else\s+if|elif|for|while|switch|case|catch|&&|\|\||and\b|or\b|unless\b|\?\?)\b/g;
 
+function extractRawImportsText(code: string, language?: string): string[] {
+    const imports: string[] = [];
+    const normalized = language?.toLowerCase();
+    
+    if (normalized === 'py' || normalized === 'python') {
+        const pyRegex = /^\s*(?:import\s+(\w+)|from\s+(\w+)\s+import)/gm;
+        let match;
+        while ((match = pyRegex.exec(code)) !== null) {
+            const imp = match[1] || match[2];
+            if (imp) imports.push(imp);
+        }
+    } else if (normalized === 'go' || normalized === 'golang') {
+        const goRegex = /^\s*import\s+(?:"([^"]+)"|\(([\s\S]*?)\))/gm;
+        let match;
+        while ((match = goRegex.exec(code)) !== null) {
+            if (match[1]) {
+                imports.push(match[1]);
+            } else if (match[2]) {
+                const subMatches = match[2].match(/"([^"]+)"/g) || [];
+                for (const sm of subMatches) {
+                    imports.push(sm.replace(/"/g, ''));
+                }
+            }
+        }
+    } else if (normalized === 'java') {
+        const javaRegex = /^\s*import\s+([\w\.]+);/gm;
+        let match;
+        while ((match = javaRegex.exec(code)) !== null) {
+            imports.push(match[1]);
+        }
+    } else if (normalized === 'cpp') {
+        const cppRegex = /^\s*#include\s+["<]([^">]+)[">]/gm;
+        let match;
+        while ((match = cppRegex.exec(code)) !== null) {
+            imports.push(match[1]);
+        }
+    }
+    return imports;
+}
+
 // ─── Core text analysis ───────────────────────────────────────────────────────
 
 function measureNestingDepth(code: string): number {
@@ -148,6 +188,7 @@ function detectConditionChains(code: string): number {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function analyzeText(code: string, language?: string): Promise<Omit<AnalysisResult, 'aiExplanation'>> {
+    const rawImports = extractRawImportsText(code, language);
     const lines = code.split('\n');
     const totalLines = lines.length;
 
@@ -355,5 +396,5 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
     const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
     issues.sort((a, b) => order[a.severity] - order[b.severity]);
 
-    return { score: cappedScore, grade, issues, metrics, estimatedImprovement: estimateImprovement(issues) };
+    return { score: cappedScore, grade, issues, metrics, estimatedImprovement: estimateImprovement(issues), imports: rawImports };
 }

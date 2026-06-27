@@ -44,6 +44,11 @@ export default defineSchema({
     // Full file results (only used when visibility === "full")
     fileResults: v.optional(v.string()),  // JSON.stringify(FileResult[])
 
+    // Stage 2 Architecture & Root Cause insights (optional)
+    architectureInsights: v.optional(v.string()), // JSON.stringify(ArchitectureInsights)
+    rootCauseClusters: v.optional(v.string()),   // JSON.stringify(RootCauseCluster[])
+    topFixes: v.optional(v.string()),            // JSON.stringify(TopFix[])
+
     // Timestamp
     createdAt: v.number(),           // Date.now()
   })

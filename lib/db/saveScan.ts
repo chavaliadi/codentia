@@ -1,6 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-import type { FileResult } from "@/lib/analyzer/aggregate";
+import type { FileResult } from "@/lib/analyzer/types";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -34,6 +34,9 @@ interface SaveScanParams {
     aiExplanation: string;
     visibility: 'summary' | 'full';
     fileResults?: FileResult[];
+    architectureInsights?: string;
+    rootCauseClusters?: string;
+    topFixes?: string;
 }
 
 export async function saveScanToConvex(params: SaveScanParams): Promise<string> {
@@ -56,6 +59,9 @@ export async function saveScanToConvex(params: SaveScanParams): Promise<string> 
         fileResults: params.visibility === 'full' && params.fileResults
             ? JSON.stringify(params.fileResults)
             : undefined,
+        architectureInsights: params.architectureInsights,
+        rootCauseClusters: params.rootCauseClusters,
+        topFixes: params.topFixes,
     });
 
     return scanId;
