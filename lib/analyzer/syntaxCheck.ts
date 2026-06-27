@@ -1,7 +1,6 @@
-import { spawnSync } from 'node:child_process';
+import Parser from 'web-tree-sitter';
+import path from 'node:path';
 import type { CorrectnessResult, Grade, SyntaxErrorDetail } from './types';
-
-type SyntaxCheckLanguage = 'py' | 'go';
 
 function gradeFromScore(score: number): Grade {
     if (score >= 90) return 'Excellent';
@@ -10,57 +9,92 @@ function gradeFromScore(score: number): Grade {
     return 'Critical';
 }
 
-function toSyntaxError(message: string): SyntaxErrorDetail {
-    const match = message.match(/:(\d+):(?:(\d+):)?\s*(.*)$/);
-    if (!match) return { message };
-    return {
-        line: Number(match[1]),
-        column: match[2] ? Number(match[2]) : undefined,
-        message: match[3] || message,
-    };
+let parserInitPromise: Promise<void> | null = null;
+async function ensureParserInit() {
+    if (!parserInitPromise) {
+        parserInitPromise = Parser.init({
+            locateFile: (scriptName: string) => path.join(process.cwd(), 'public/wasm', scriptName)
+        });
+    }
+    return parserInitPromise;
 }
 
-function runPythonSyntaxCheck(code: string): CorrectnessResult {
-    const script = 'import ast,sys; ast.parse(sys.stdin.read())';
-    const res = spawnSync('python3', ['-c', script], {
-        input: code,
-        encoding: 'utf8',
-        timeout: 3000,
-    });
-
-    if (res.error) return { status: 'unknown', syntaxErrors: [] };
-    if (res.status === 0) return { status: 'pass', syntaxErrors: [] };
-
-    const stderr = (res.stderr || '').trim();
-    return {
-        status: 'fail',
-        syntaxErrors: [{ message: stderr || 'Python syntax error' }],
-    };
+const languageLoaders = new Map<string, Promise<Parser.Language>>();
+async function getLanguage(langName: string): Promise<Parser.Language> {
+    const key = langName.toLowerCase();
+    if (!languageLoaders.has(key)) {
+        const loadPromise = (async () => {
+            await ensureParserInit();
+            const wasmFile = `tree-sitter-${key === 'c#' ? 'c_sharp' : key}.wasm`;
+            const wasmPath = path.join(process.cwd(), 'public/wasm', wasmFile);
+            return await Parser.Language.load(wasmPath);
+        })();
+        languageLoaders.set(key, loadPromise);
+    }
+    return languageLoaders.get(key)!;
 }
 
-function runGoSyntaxCheck(code: string): CorrectnessResult {
-    const res = spawnSync('gofmt', ['-e'], {
-        input: code,
-        encoding: 'utf8',
-        timeout: 3000,
-    });
+function collectErrors(node: Parser.SyntaxNode, errors: SyntaxErrorDetail[]) {
+    if (node.type === 'ERROR') {
+        const sample = node.text.slice(0, 60).trim();
+        errors.push({
+            message: `Syntax error near '${sample || node.type}'`,
+            line: node.startPosition.row + 1,
+            column: node.startPosition.column + 1,
+        });
+    } else if (node.isMissing()) {
+        errors.push({
+            message: `Missing expected token: ${node.type}`,
+            line: node.startPosition.row + 1,
+            column: node.startPosition.column + 1,
+        });
+    }
 
-    if (res.error) return { status: 'unknown', syntaxErrors: [] };
-    if (res.status === 0) return { status: 'pass', syntaxErrors: [] };
-
-    const stderr = (res.stderr || '').trim();
-    const lines = stderr.split('\n').filter(Boolean);
-    return {
-        status: 'fail',
-        syntaxErrors: lines.length > 0 ? lines.map(toSyntaxError) : [{ message: 'Go syntax error' }],
-    };
+    for (let i = 0; i < node.childCount; i++) {
+        collectErrors(node.child(i)!, errors);
+    }
 }
 
-export function checkSyntaxByLanguage(code: string, language: string): CorrectnessResult {
+export async function checkSyntaxByLanguage(code: string, language: string): Promise<CorrectnessResult> {
     const normalized = language.toLowerCase();
-    if (normalized === 'py' || normalized === 'python') return runPythonSyntaxCheck(code);
-    if (normalized === 'go' || normalized === 'golang') return runGoSyntaxCheck(code);
-    return { status: 'unknown', syntaxErrors: [] };
+    
+    let langKey = '';
+    if (normalized === 'py' || normalized === 'python') langKey = 'python';
+    else if (normalized === 'go' || normalized === 'golang') langKey = 'go';
+    else if (normalized === 'java') langKey = 'java';
+    else if (normalized === 'cpp') langKey = 'cpp';
+    else if (normalized === 'rust') langKey = 'rust';
+    else if (normalized === 'c#') langKey = 'c_sharp';
+    
+    if (!langKey) {
+        return { status: 'unknown', syntaxErrors: [] };
+    }
+
+    try {
+        const lang = await getLanguage(langKey);
+        const parser = new Parser();
+        parser.setLanguage(lang);
+        const tree = parser.parse(code);
+
+        if (!tree || !tree.rootNode) {
+            return { status: 'unknown', syntaxErrors: [] };
+        }
+
+        if (!tree.rootNode.hasError()) {
+            return { status: 'pass', syntaxErrors: [] };
+        }
+
+        const errors: SyntaxErrorDetail[] = [];
+        collectErrors(tree.rootNode, errors);
+
+        return {
+            status: 'fail',
+            syntaxErrors: errors.slice(0, 10), // Limit error list sizing
+        };
+    } catch (err) {
+        console.error(`[syntaxCheck] Tree-sitter error for ${language}:`, err);
+        return { status: 'unknown', syntaxErrors: [] };
+    }
 }
 
 export function applyCorrectnessCap(score: number, correctness: CorrectnessResult): { score: number; grade: Grade } {

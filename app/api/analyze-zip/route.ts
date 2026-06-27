@@ -40,6 +40,24 @@ function isTrustedBlobUrl(urlString: string): boolean {
     }
 }
 
+async function pool<T, R>(
+    concurrency: number,
+    items: T[],
+    fn: (item: T) => Promise<R>
+): Promise<R[]> {
+    const results: R[] = [];
+    const queue = [...items.entries()];
+    
+    const workers = Array(Math.min(concurrency, items.length)).fill(null).map(async () => {
+        for (const [idx, item] of queue) {
+            results[idx] = await fn(item);
+        }
+    });
+    
+    await Promise.all(workers);
+    return results;
+}
+
 async function parseZipInput(req: NextRequest): Promise<{ input: ZipInput | null; error: NextResponse | null }> {
     const contentType = req.headers.get('content-type') ?? '';
 
@@ -212,7 +230,7 @@ async function analyzeFile(
     }
     const languageId = getLanguageId(filename);
     const quickResult = await analyzeText(code, languageId);
-    const quickCorrectness = checkSyntaxByLanguage(code, getSyntaxLanguageId(filename));
+    const quickCorrectness = await checkSyntaxByLanguage(code, getSyntaxLanguageId(filename));
     const corrected = applyCorrectnessCap(quickResult.score, quickCorrectness);
     return {
         ...quickResult,
@@ -265,18 +283,29 @@ export async function POST(req: NextRequest) {
             }, { status: 422 });
         }
 
-        // Analyze each file (cap individual files at 100KB)
-        const fileResults: FileResult[] = [];
+        // Analyze each file concurrently (cap individual files at 100KB, max concurrency 6)
         const allIssues: { filePath: string; issue: Issue }[] = [];
 
-        for (const entry of entries) {
+        const poolResults = await pool(6, entries, async (entry) => {
             const code = entry.getData().toString('utf8');
-            if (code.length > 100_000) continue; // skip very large files
+            if (code.length > 100_000) return null; // skip very large files
 
             const filename = entry.entryName.split('/').pop() ?? entry.entryName;
             const mode = getMode(entry.entryName);
-
             const result = await analyzeFile(filename, code, mode);
+
+            return {
+                entry,
+                filename,
+                mode,
+                result,
+            };
+        });
+
+        const fileResults: FileResult[] = [];
+        for (const r of poolResults) {
+            if (!r) continue;
+            const { entry, filename, mode, result } = r;
 
             fileResults.push({
                 filename,

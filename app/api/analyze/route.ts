@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         } else {
             // ⚡ Quick Scan Mode — text-based for all other languages
             analysisBase = await analyzeText(code, language);
-            correctness = checkSyntaxByLanguage(code, language);
+            correctness = await checkSyntaxByLanguage(code, language);
             const corrected = applyCorrectnessCap(analysisBase.score, correctness);
             analysisBase = { ...analysisBase, score: corrected.score, grade: corrected.grade, correctness };
         }
