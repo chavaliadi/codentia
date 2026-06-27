@@ -27,6 +27,13 @@ export type IssueType =
   | 'using_namespace_std'
   | 'empty_destructor';
 
+export interface CategoryScores {
+  readability: number;      // nesting + function length
+  maintainability: number;  // complexity + duplication
+  cleanliness: number;      // unused imports + file org
+  structure: number;        // function count balance
+}
+
 export interface Issue {
   type: IssueType;
   category: IssueCategory;
@@ -35,6 +42,8 @@ export interface Issue {
   message: string;
   line?: number;
   name?: string; // function / block name if applicable
+  confidence?: number;
+  method?: string;
 }
 
 export interface MetricsSummary {
@@ -79,4 +88,6 @@ export interface AnalysisResult {
   correctness?: CorrectnessResult;
   aiExplanation: string;
   estimatedImprovement?: number; // pts if quick wins addressed
+  categoryScores?: CategoryScores;
 }
+

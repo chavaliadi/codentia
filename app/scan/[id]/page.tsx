@@ -74,6 +74,37 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
         year: 'numeric', month: 'short', day: 'numeric'
     });
 
+    const getGrade = (s: number): string => {
+        if (s >= 90) return 'Excellent';
+        if (s >= 70) return 'Good';
+        if (s >= 50) return 'Fair';
+        return 'Critical';
+    };
+
+    const catGrades = Object.entries(scan.categoryScores).map(([key, val]) => {
+        let label = '';
+        if (key === 'readability') label = 'Readability';
+        else if (key === 'maintainability') label = 'Maintainability';
+        else if (key === 'cleanliness') label = 'Cleanliness';
+        else if (key === 'structure') label = 'Structure';
+        return { name: label, score: val, grade: getGrade(val) };
+    });
+
+    const strengthsMap: Record<string, string> = {
+        Readability: 'Excellent nesting structure and concise functions make this codebase highly readable and easy to scan.',
+        Maintainability: 'Clean complexity metrics and code block uniqueness reduce overall maintenance overhead.',
+        Cleanliness: 'Clean import organization with no dead references or unused modules cluttering the workspace.',
+        Structure: 'Optimized module balance and file size constraints keep the package directory architecture simple.',
+    };
+
+    const topStrengths = [...catGrades]
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+        .map(c => ({
+            name: c.name,
+            desc: strengthsMap[c.name] || 'Excellent metrics across key areas.'
+        }));
+
     return (
         <main className="analyze-main">
             {/* Navbar */}
@@ -139,7 +170,9 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                             <div key={key} className="cat-bar-item">
                                 <div className="cat-bar-header">
                                     <span className="cat-bar-label" style={{ textTransform: 'capitalize' }}>{key}</span>
-                                    <span className="cat-bar-score" style={{ color: barColor(val) }}>{val}</span>
+                                    <span className="cat-bar-score" style={{ color: barColor(val) }}>
+                                        {getGrade(val)} ({val})
+                                    </span>
                                 </div>
                                 <div className="cat-bar-track">
                                     <div className="cat-bar-fill" style={{ width: `${val}%`, background: barColor(val) }} />
@@ -149,6 +182,24 @@ export default function ScanSharePage({ params }: { params: Promise<{ id: string
                     </div>
                 </div>
             </div>
+
+            {/* Top Strengths */}
+            {topStrengths.length > 0 && (
+                <div className="glass-card improvements-section" style={{ borderLeft: '3px solid #22c55e' }}>
+                    <h2 className="card-title" style={{ color: '#22c55e' }}>Top Project Strengths</h2>
+                    <div className="improvements-list">
+                        {topStrengths.map((str, i) => (
+                            <div key={i} className="improvement-item">
+                                <div className="improvement-rank" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>✓</div>
+                                <div className="improvement-body">
+                                    <div className="improvement-area">{str.name}</div>
+                                    <p className="improvement-desc">{str.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Top Improvements */}
             {topImprovements.length > 0 && (

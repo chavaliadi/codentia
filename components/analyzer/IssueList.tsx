@@ -75,6 +75,11 @@ export default function IssueList({ issues, code = '', language = 'ts', estimate
                     <span className="issue-priority-badge">
                         {priorityBadge}
                     </span>
+                    {issue.confidence !== undefined && (
+                        <span className={`issue-confidence-badge ${(issue.confidence ?? 100) >= 90 ? 'high' : 'medium'}`} title={`Confidence: ${issue.confidence}% (Method: ${issue.method || 'Unknown'})`}>
+                            🎯 {issue.confidence}% ({issue.method || 'Static'})
+                        </span>
+                    )}
                     <span className="issue-severity" style={{ color: sev.color }}>
                         {sev.label}
                     </span>

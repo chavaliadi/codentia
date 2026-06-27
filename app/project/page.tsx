@@ -77,6 +77,45 @@ export default function ProjectPage() {
         );
     }
 
+    const fileResults = project.fileResults;
+    const avg = (arr: number[]) => arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10;
+
+    const complexityPenalty = Math.round(avg(fileResults.map(f => {
+        const sub = Math.max(0, Math.min(100, Math.round(100 - (f.metrics.avgCyclomaticComplexity - 1) * 8)));
+        return Math.round((100 - sub) * 0.30);
+    })));
+    const lengthPenalty = Math.round(avg(fileResults.map(f => {
+        const sub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, f.metrics.avgFunctionLength - 20) * 1.2)));
+        return Math.round((100 - sub) * 0.25);
+    })));
+    const nestingPenalty = Math.round(avg(fileResults.map(f => {
+        const sub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, f.metrics.maxNestingDepth - 2) * 15)));
+        return Math.round((100 - sub) * 0.20);
+    })));
+    const duplicationPenalty = Math.round(avg(fileResults.map(f => {
+        const sub = Math.max(0, Math.min(100, Math.round(100 - f.metrics.duplicationPercentage * 2)));
+        return Math.round((100 - sub) * 0.15);
+    })));
+    const unusedPenalty = Math.round(avg(fileResults.map(f => {
+        const sub = Math.max(0, Math.min(100, Math.round(100 - f.metrics.unusedImportCount * 10)));
+        return Math.round((100 - sub) * 0.10);
+    })));
+
+    const whatIfs = [
+        { name: 'Complexity', penalty: complexityPenalty, action: 'Simplify logic complexity' },
+        { name: 'Nesting', penalty: nestingPenalty, action: 'Flatten nested logical paths' },
+        { name: 'Duplication', penalty: duplicationPenalty, action: 'Consolidate duplicate logic' },
+        { name: 'Unused Imports', penalty: unusedPenalty, action: 'Clean up unused imports' },
+        { name: 'Function Length', penalty: lengthPenalty, action: 'Shorten longer functions' },
+    ].filter(w => w.penalty > 0);
+
+    function getGrade(s: number): string {
+        if (s >= 90) return 'Excellent';
+        if (s >= 70) return 'Good';
+        if (s >= 50) return 'Fair';
+        return 'Critical';
+    }
+
     const catItems = [
         { label: 'Readability', value: project.categoryScores.readability, hint: 'Nesting depth + function length' },
         { label: 'Maintainability', value: project.categoryScores.maintainability, hint: 'Complexity + duplication' },
@@ -241,6 +280,69 @@ export default function ProjectPage() {
                             <span className="meta-value">{project.totalLines.toLocaleString()}</span>
                         </div>
                     </div>
+
+                    {/* Explainable Scoring */}
+                    <div className="explainable-scoring-card">
+                        <h3 className="breakdown-title">Average Deductions per File</h3>
+                        <div className="score-breakdown-list">
+                            {complexityPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Complexity Penalty</span>
+                                    <span className="breakdown-value penalty">-{complexityPenalty} pts</span>
+                                </div>
+                            )}
+                            {lengthPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Function Length Penalty</span>
+                                    <span className="breakdown-value penalty">-{lengthPenalty} pts</span>
+                                </div>
+                            )}
+                            {nestingPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Nesting Penalty</span>
+                                    <span className="breakdown-value penalty">-{nestingPenalty} pts</span>
+                                </div>
+                            )}
+                            {duplicationPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Duplication Penalty</span>
+                                    <span className="breakdown-value penalty">-{duplicationPenalty} pts</span>
+                                </div>
+                            )}
+                            {unusedPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Unused Imports Penalty</span>
+                                    <span className="breakdown-value penalty">-{unusedPenalty} pts</span>
+                                </div>
+                            )}
+                            {complexityPenalty === 0 && lengthPenalty === 0 && nestingPenalty === 0 && duplicationPenalty === 0 && unusedPenalty === 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Deductions</span>
+                                    <span className="breakdown-value boost">None</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* What-If Playbook */}
+                    {whatIfs.length > 0 && (
+                        <div className="what-if-playbook">
+                            <h3 className="what-if-title">⚡ What-If Playbook</h3>
+                            <ul className="what-if-list">
+                                {whatIfs.map((w, idx) => {
+                                    const proj = Math.min(project.projectScore + w.penalty, 100);
+                                    return (
+                                        <li key={idx} className="what-if-item">
+                                            <span>{w.action}</span>
+                                            <span className="what-if-projected">
+                                                Projected: <strong>{proj} (+{w.penalty} pts)</strong>
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 <div className="glass-card ai-card">
@@ -259,7 +361,9 @@ export default function ProjectPage() {
                         <div key={cat.label} className="cat-bar-item">
                             <div className="cat-bar-header">
                                 <span className="cat-bar-label">{cat.label}</span>
-                                <span className="cat-bar-score" style={{ color: barColor(cat.value) }}>{cat.value}</span>
+                                <span className="cat-bar-score" style={{ color: barColor(cat.value) }}>
+                                    {getGrade(cat.value)} ({cat.value})
+                                </span>
                             </div>
                             <div className="cat-bar-track">
                                 <div className="cat-bar-fill" style={{ width: `${cat.value}%`, background: barColor(cat.value) }} />

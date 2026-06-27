@@ -1,4 +1,4 @@
-import type { AnalysisResult, Issue, MetricsSummary, Grade } from './types';
+import type { MetricsSummary, Grade, CategoryScores } from './types';
 
 export interface FileResult {
     filename: string;
@@ -44,12 +44,7 @@ export interface TopImprovement {
     potentialGain: number; // estimated score points gain
 }
 
-export interface CategoryScores {
-    readability: number;      // nesting + function length
-    maintainability: number;  // complexity + duplication
-    cleanliness: number;      // unused imports + file org
-    structure: number;        // function count balance
-}
+// CategoryScores is imported from types.ts
 
 function clamp(v: number) { return Math.max(0, Math.min(100, Math.round(v))); }
 

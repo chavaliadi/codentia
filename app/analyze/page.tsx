@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, UserButton } from '@clerk/nextjs';
-import type { AnalysisResult } from '@/lib/analyzer/types';
+import type { AnalysisResult, Grade } from '@/lib/analyzer/types';
 import ScoreGauge from '@/components/analyzer/ScoreGauge';
 import IssueList from '@/components/analyzer/IssueList';
 import MetricsGrid from '@/components/analyzer/MetricsGrid';
@@ -54,6 +54,48 @@ export default function AnalyzePage() {
         correctness.status === 'pass' ? 'Pass' :
             correctness.status === 'fail' ? 'Fail' :
                 'Not checked';
+
+    // Explainable Scoring computation
+    const metrics = result.metrics;
+    const complexitySub = Math.max(0, Math.min(100, Math.round(100 - (metrics.avgCyclomaticComplexity - 1) * 8)));
+    const lengthSub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, metrics.avgFunctionLength - 20) * 1.2)));
+    const nestingSub = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, metrics.maxNestingDepth - 2) * 15)));
+    const duplicationSub = Math.max(0, Math.min(100, Math.round(100 - metrics.duplicationPercentage * 2)));
+    const unusedSub = Math.max(0, Math.min(100, Math.round(100 - metrics.unusedImportCount * 10)));
+
+    const complexityPenalty = Math.round((100 - complexitySub) * 0.30);
+    const lengthPenalty = Math.round((100 - lengthSub) * 0.25);
+    const nestingPenalty = Math.round((100 - nestingSub) * 0.20);
+    const duplicationPenalty = Math.round((100 - duplicationSub) * 0.15);
+    const unusedPenalty = Math.round((100 - unusedSub) * 0.10);
+
+    const whatIfs = [
+        { name: 'Complexity', penalty: complexityPenalty, action: 'Simplify complexity' },
+        { name: 'Nesting', penalty: nestingPenalty, action: 'Flatten deep nesting' },
+        { name: 'Duplication', penalty: duplicationPenalty, action: 'Extract duplicate logic' },
+        { name: 'Unused Imports', penalty: unusedPenalty, action: 'Clean up unused imports' },
+        { name: 'Function Length', penalty: lengthPenalty, action: 'Shorten long functions' },
+    ].filter(w => w.penalty > 0);
+
+    // Multi-Dimension Report Card calculations
+    const readabilityScore = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, metrics.maxNestingDepth - 2) * 15 - Math.max(0, metrics.avgFunctionLength - 20) * 0.8)));
+    const maintainabilityScore = Math.max(0, Math.min(100, Math.round(100 - (metrics.avgCyclomaticComplexity - 1) * 8 - metrics.duplicationPercentage * 1.5)));
+    const cleanlinessScore = Math.max(0, Math.min(100, Math.round(100 - metrics.unusedImportCount * 12)));
+    const structureScore = Math.max(0, Math.min(100, Math.round(result.score * 0.9 + 10)));
+
+    const getGrade = (s: number): Grade => {
+        if (s >= 90) return 'Excellent';
+        if (s >= 70) return 'Good';
+        if (s >= 50) return 'Fair';
+        return 'Critical';
+    };
+
+    const dimensionColors: Record<Grade, string> = {
+        Excellent: '#22c55e',
+        Good: '#3b82f6',
+        Fair: '#f59e0b',
+        Critical: '#ef4444',
+    };
 
     return (
         <main className="analyze-main">
@@ -149,6 +191,83 @@ export default function AnalyzePage() {
                             <span className="meta-value">{result.issues.length}</span>
                         </div>
                     </div>
+
+                    {/* Explainable Scoring */}
+                    <div className="explainable-scoring-card">
+                        <h3 className="breakdown-title">Score Breakdown</h3>
+                        <div className="score-breakdown-list">
+                            {complexityPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Complexity Penalty</span>
+                                    <span className="breakdown-value penalty">-{complexityPenalty} pts</span>
+                                </div>
+                            )}
+                            {lengthPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Function Length Penalty</span>
+                                    <span className="breakdown-value penalty">-{lengthPenalty} pts</span>
+                                </div>
+                            )}
+                            {nestingPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Nesting Penalty</span>
+                                    <span className="breakdown-value penalty">-{nestingPenalty} pts</span>
+                                </div>
+                            )}
+                            {duplicationPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Duplication Penalty</span>
+                                    <span className="breakdown-value penalty">-{duplicationPenalty} pts</span>
+                                </div>
+                            )}
+                            {unusedPenalty > 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Unused Imports Penalty</span>
+                                    <span className="breakdown-value penalty">-{unusedPenalty} pts</span>
+                                </div>
+                            )}
+                            {correctness.status === 'fail' && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Syntax Errors Cap</span>
+                                    <span className="breakdown-value penalty">Capped at 60 max</span>
+                                </div>
+                            )}
+                            {languageMode === 'quick' && correctness.status !== 'fail' && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Quick Scan Engine Cap</span>
+                                    <span className="breakdown-value penalty">Capped at 80 max</span>
+                                </div>
+                            )}
+                            {complexityPenalty === 0 && lengthPenalty === 0 && nestingPenalty === 0 && duplicationPenalty === 0 && unusedPenalty === 0 && (
+                                <div className="score-breakdown-item">
+                                    <span className="breakdown-label">Deductions</span>
+                                    <span className="breakdown-value boost">None</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* What-If Playbook */}
+                    {whatIfs.length > 0 && correctness.status !== 'fail' && (
+                        <div className="what-if-playbook">
+                            <h3 className="what-if-title">⚡ What-If Playbook</h3>
+                            <ul className="what-if-list">
+                                {whatIfs.map((w, idx) => {
+                                    const rawProj = result.score + w.penalty;
+                                    const proj = languageMode === 'quick' ? Math.min(rawProj, 80) : Math.min(rawProj, 100);
+                                    return (
+                                        <li key={idx} className="what-if-item">
+                                            <span>{w.action}</span>
+                                            <span className="what-if-projected">
+                                                Projected Score: <strong>{proj} (+{w.penalty} pts)</strong>
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
+
                     {languageMode === 'quick' && correctness.status === 'unknown' && (
                         <div className="quick-scan-note">
                             ⚠️ This score reflects structure only. Syntax errors and runtime issues were not validated.
@@ -160,6 +279,49 @@ export default function AnalyzePage() {
                 <div className="glass-card ai-card">
                     <h2 className="card-title">AI Insight</h2>
                     <AIInsight explanation={result.aiExplanation} />
+                </div>
+            </div>
+
+            {/* ── Multi-Dimension Report Card ── */}
+            <div className="glass-card metrics-section">
+                <h2 className="card-title">Multi-Dimension Report Card</h2>
+                <div className="report-card-grid">
+                    <div className="dimension-card">
+                        <div className="dimension-header">
+                            <h4>Readability</h4>
+                            <span className="dimension-grade" style={{ color: dimensionColors[getGrade(readabilityScore)], borderColor: `${dimensionColors[getGrade(readabilityScore)]}40`, background: `${dimensionColors[getGrade(readabilityScore)]}12` }}>
+                                {getGrade(readabilityScore)} <span className="dimension-score">({readabilityScore})</span>
+                            </span>
+                        </div>
+                        <p className="dimension-desc">Measures logical block nesting levels and function line count boundaries.</p>
+                    </div>
+                    <div className="dimension-card">
+                        <div className="dimension-header">
+                            <h4>Maintainability</h4>
+                            <span className="dimension-grade" style={{ color: dimensionColors[getGrade(maintainabilityScore)], borderColor: `${dimensionColors[getGrade(maintainabilityScore)]}40`, background: `${dimensionColors[getGrade(maintainabilityScore)]}12` }}>
+                                {getGrade(maintainabilityScore)} <span className="dimension-score">({maintainabilityScore})</span>
+                            </span>
+                        </div>
+                        <p className="dimension-desc">Measures logic decision path complexity and code block duplication.</p>
+                    </div>
+                    <div className="dimension-card">
+                        <div className="dimension-header">
+                            <h4>Cleanliness</h4>
+                            <span className="dimension-grade" style={{ color: dimensionColors[getGrade(cleanlinessScore)], borderColor: `${dimensionColors[getGrade(cleanlinessScore)]}40`, background: `${dimensionColors[getGrade(cleanlinessScore)]}12` }}>
+                                {getGrade(cleanlinessScore)} <span className="dimension-score">({cleanlinessScore})</span>
+                            </span>
+                        </div>
+                        <p className="dimension-desc">Measures clean import declarations and detects unused references.</p>
+                    </div>
+                    <div className="dimension-card">
+                        <div className="dimension-header">
+                            <h4>Structure</h4>
+                            <span className="dimension-grade" style={{ color: dimensionColors[getGrade(structureScore)], borderColor: `${dimensionColors[getGrade(structureScore)]}40`, background: `${dimensionColors[getGrade(structureScore)]}12` }}>
+                                {getGrade(structureScore)} <span className="dimension-score">({structureScore})</span>
+                            </span>
+                        </div>
+                        <p className="dimension-desc">Evaluates balance of function density and module file sizes.</p>
+                    </div>
                 </div>
             </div>
 

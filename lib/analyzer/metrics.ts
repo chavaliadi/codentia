@@ -146,7 +146,7 @@ function detectRedundantElse(ast: t.File): Array<{ line: number; fnName: string 
             if (hasFinalReturn && node.alternate) {
                 // Find function name
                 let fnName = 'anonymous';
-                let parent = path.getFunctionParent();
+                const parent = path.getFunctionParent();
                 if (parent?.node?.id) fnName = parent.node.id.name;
                 issues.push({ line: node.alternate.loc?.start.line ?? 0, fnName });
             }
@@ -323,6 +323,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
                     message: `"${fnName}" has ${complexity} decision paths through it. Splitting it into smaller focused functions would make it easier to read and test.`,
                     line: startLine,
                     name: fnName,
+                    confidence: 100,
+                    method: 'AST',
                 });
             }
 
@@ -336,6 +338,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
                     message: `"${fnName}" is ${lines} lines long. Breaking it into 2–3 smaller functions would make it much easier to scan and maintain.`,
                     line: startLine,
                     name: fnName,
+                    confidence: 100,
+                    method: 'AST',
                 });
             }
         },
@@ -351,6 +355,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             severity,
             priority: determinePriority('nesting', severity),
             message: `Some logic here is nested ${maxDepth} levels deep, which can be tricky to follow. Early returns or small helper functions could make this much clearer.`,
+            confidence: 100,
+            method: 'AST',
         });
     }
 
@@ -364,6 +370,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             severity,
             priority: determinePriority('duplication', severity),
             message: `About ${dupePct}% of code blocks look similar to each other. Pulling shared logic into a helper function would reduce repetition and make future edits easier.`,
+            confidence: 85,
+            method: 'AST + similarity',
         });
     }
 
@@ -378,6 +386,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
                 priority: 'quick-win',
                 message: `"${name}" is imported but not used anywhere. Removing it keeps things tidy and slightly reduces bundle size.`,
                 name,
+                confidence: 100,
+                method: 'AST',
             });
         });
     }
@@ -392,6 +402,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             priority: 'quick-win',
             message: `Empty catch block silently swallows errors. Either log them, rethrow, or document why it's safe to ignore.`,
             line: catch_.line,
+            confidence: 100,
+            method: 'AST',
         });
     });
 
@@ -405,6 +417,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             priority: 'quick-win',
             message: `Else block after a return/throw is unnecessary. Dedent the else content to simplify the flow.`,
             line: issue.line,
+            confidence: 100,
+            method: 'AST',
         });
     });
 
@@ -418,6 +432,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             priority: 'quick-win',
             message: `Comparing to true/false is redundant. Use the variable directly or negate it instead.`,
             line: comp.line,
+            confidence: 100,
+            method: 'AST',
         });
     });
 
@@ -432,6 +448,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             message: `"${fn.fnName}" has ${fn.paramCount} parameters. Wrapping them in a config object or splitting the function would make it easier to extend.`,
             line: fn.line,
             name: fn.fnName,
+            confidence: 100,
+            method: 'AST',
         });
     });
 
@@ -445,6 +463,8 @@ export function computeMetrics(ast: t.File, code: string): RawMetrics {
             priority: 'quick-win',
             message: `Long if-else-if chain can be hard to follow. Consider a switch statement or a lookup object for clarity.`,
             line: chain.line,
+            confidence: 100,
+            method: 'AST',
         });
     });
 

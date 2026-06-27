@@ -189,6 +189,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity,
             priority: determinePriority('nesting', severity),
             message: `Some logic here is nested ${nestingDepth} levels deep, which can be tricky to follow. Early returns or small helper functions could make this much clearer.`,
+            confidence: 75,
+            method: 'Text + indent',
         });
     }
 
@@ -200,6 +202,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity,
             priority: determinePriority('length', severity),
             message: `Functions average ${avgFunctionLength} lines. Breaking longer ones into 2–3 smaller functions would make them much easier to scan and maintain.`,
+            confidence: 85,
+            method: 'Text + boundaries',
         });
     }
 
@@ -211,6 +215,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity,
             priority: determinePriority('complexity', severity),
             message: `The code has roughly ${avgComplexity} decision paths on average. Simplifying conditional logic would improve readability and testability.`,
+            confidence: 70,
+            method: 'Text + keywords',
         });
     }
 
@@ -222,6 +228,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity,
             priority: determinePriority('duplication', severity),
             message: `About ${duplicationPercentage}% of code blocks look similar. Pulling shared logic into a helper would reduce repetition and make future edits easier.`,
+            confidence: 80,
+            method: 'Text + similarity',
         });
     }
 
@@ -234,6 +242,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity: 'medium',
             priority: 'quick-win',
             message: `${emptyCatches} empty catch block${emptyCatches > 1 ? 's' : ''} silently swallow errors. Either log them, rethrow, or document why it's safe to ignore.`,
+            confidence: 90,
+            method: 'Text + regex',
         });
     }
 
@@ -245,6 +255,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity: 'low',
             priority: 'quick-win',
             message: `${redundantElses} else block${redundantElses > 1 ? 's' : ''} after return/throw ${redundantElses > 1 ? 'are' : 'is'} unnecessary. Dedent the content to simplify the flow.`,
+            confidence: 90,
+            method: 'Text + regex',
         });
     }
 
@@ -256,6 +268,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity: 'low',
             priority: 'quick-win',
             message: `${boolComparisons} comparison${boolComparisons > 1 ? 's' : ''} to true/false ${boolComparisons > 1 ? 'are' : 'is'} redundant. Use the variable directly or negate it instead.`,
+            confidence: 95,
+            method: 'Text + regex',
         });
     }
 
@@ -267,6 +281,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity: 'medium',
             priority: 'structural',
             message: `${longParams} function${longParams > 1 ? 's' : ''} ${longParams > 1 ? 'have' : 'has'} 6+ parameters. Wrapping them in a config object would make it easier to extend.`,
+            confidence: 80,
+            method: 'Text + regex',
         });
     }
 
@@ -278,6 +294,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
             severity: 'low',
             priority: 'quick-win',
             message: `${condChains} if-else-if chain${condChains > 1 ? 's' : ''} can be hard to follow. Consider a switch statement or a lookup object for clarity.`,
+            confidence: 85,
+            method: 'Text + regex',
         });
     }
 
@@ -295,6 +313,8 @@ export async function analyzeText(code: string, language?: string): Promise<Omit
                     ...issue,
                     category: 'language' as const,
                     priority: issue.priority || 'quick-win' as const,
+                    confidence: issue.confidence || 90,
+                    method: issue.method || 'Text + regex',
                 }));
                 issues.push(...taggedIssues);
             }
